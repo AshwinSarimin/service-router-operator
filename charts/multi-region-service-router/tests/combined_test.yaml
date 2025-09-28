@@ -1,0 +1,80 @@
+suite: test dns endpoints and gateways
+templates:
+  - dnsendpoint.yaml
+  - istio-gateway.yaml
+release:
+  name: test-release
+  namespace: default
+tests:
+  - it: creates service dns records in endpoints and adds hosts to gateways
+    values:
+      - ./values/combined-test-values.yaml
+    asserts:
+      # First check the DNSEndpoint document (document 0)
+      - isKind:
+          of: DNSEndpoint
+        documentIndex: 0
+        template: dnsendpoint.yaml
+      - equal:
+          path: metadata.name
+          value: external-dns-neu
+        documentIndex: 0
+        template: dnsendpoint.yaml
+      
+      # Check DNSEndpoint has expected records for both services
+      - matchRegex:
+          path: spec.endpoints[0].dnsName
+          pattern: service-01-ns-d-dev-app-01.aks.example.com
+        documentIndex: 0
+        template: dnsendpoint.yaml
+      - matchRegex:
+          path: spec.endpoints[0].targets[0]
+          pattern: aks01-neu-external.aks.example.com
+        documentIndex: 0
+        template: dnsendpoint.yaml
+      - matchRegex:
+          path: spec.endpoints[1].dnsName
+          pattern: service-02-ns-d-dev-app-01.aks.example.com
+        documentIndex: 0
+        template: dnsendpoint.yaml
+      - matchRegex:
+          path: spec.endpoints[1].targets[0]
+          pattern: aks01-neu-internal.aks.example.com
+        documentIndex: 0
+        template: dnsendpoint.yaml
+      
+      # Check the first Gateway document (document 0 in istio-gateway.yaml)
+      - isKind:
+          of: Gateway
+        documentIndex: 0
+        template: istio-gateway.yaml
+      - equal:
+          path: metadata.name
+          value: default-gateway-ingress
+        documentIndex: 0
+        template: istio-gateway.yaml
+      
+      # Check the second Gateway document (document 1 in istio-gateway.yaml)
+      - isKind:
+          of: Gateway 
+        documentIndex: 1
+        template: istio-gateway.yaml
+      - equal:
+          path: metadata.name
+          value: internal-gateway-ingress
+        documentIndex: 1
+        template: istio-gateway.yaml
+        
+      # Verify that default gateway has service-01 host
+      - contains:
+          path: spec.servers[0].hosts
+          content: service-01-ns-d-dev-app-01.aks.example.com
+        documentIndex: 0
+        template: istio-gateway.yaml
+        
+      # Verify that internal gateway has service-02 host
+      - contains:
+          path: spec.servers[0].hosts
+          content: service-02-ns-d-dev-app-01.aks.example.com
+        documentIndex: 1
+        template: istio-gateway.yaml

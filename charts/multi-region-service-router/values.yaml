@@ -1,0 +1,10 @@
+apps: []
+
+cluster: ""
+region: ""
+environmentLetter: ""
+domain: ""
+
+externalDns: []
+
+gateways: []

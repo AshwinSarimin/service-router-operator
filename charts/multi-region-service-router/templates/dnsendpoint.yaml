@@ -1,0 +1,71 @@
+{{- $cluster := .Values.cluster -}}
+{{- $region := .Values.region -}}
+{{- $domain := .Values.domain -}}
+{{- $environmentLetter := .Values.environmentLetter -}}
+{{- range .Values.externalDns }}
+  {{- $controller := .controller }}
+  {{- $controllerRegion := .region | default $region }}
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: {{ $controller }}
+  labels:
+    app: {{ $controller }}
+spec:
+  endpoints:
+{{- range $.Values.apps }}
+  {{- if and (eq .mode "regionbound") (not .region) }}
+    {{- fail (printf "App '%s' is regionbound but has no region set!" .name) }}
+  {{- end }}
+  {{- $appName := .name }}
+  {{- $appEnvironment := .environment }}
+  {{- $appMode := .mode | default "active" }}
+  {{- $appRegion := .region | default $region }}
+  {{- $appCluster := .cluster | default $cluster }}
+  {{/* Service configuration format: map of gateway -> array of services */}}
+  {{- range $gatewayName, $gatewayServices := .services }}
+    {{- $serviceGateway := $gatewayName }}
+    {{- $gatewayTargetPostfix := "" }}
+    {{- $gatewayFound := false }}
+    {{- range $.Values.gateways }}
+      {{- if eq .name $serviceGateway }}
+        {{- $gatewayTargetPostfix = .targetPostfix | default "external" }}
+        {{- $gatewayFound = true }}
+      {{- end }}
+    {{- end }}
+    {{- if not $gatewayFound }}
+      {{- fail (printf "Gateway '%s' referenced in app '%s' not found in gateways list!" $serviceGateway $appName) }}
+    {{- end }}
+    {{- range $gatewayServices }}
+      {{- $serviceName := . }}
+      {{- $dnsName := printf "%s-ns-%s-%s-%s.%s" $serviceName $environmentLetter $appEnvironment $appName $domain }}
+      {{- $shouldCreateRecord := false }}
+      {{- if eq $appMode "regionbound" }}
+        {{- if eq $appRegion $region }}
+          {{- $shouldCreateRecord = true }}
+        {{- else }}
+        # Skipping {{ $dnsName }} for controller {{ $controller }} because regionbound app region {{ $appRegion }} does not match controller region {{ $region }} (would target {{ printf "%s-%s-%s.%s" $appCluster $appRegion $gatewayTargetPostfix $domain }})
+        {{- end }}
+      {{- else if eq $appMode "active" }}
+        {{- if eq $region $controllerRegion }}
+          {{- $shouldCreateRecord = true }}
+        {{- else }}
+        # Skipping {{ $dnsName }} for controller {{ $controller }} because active app region {{ $region }} does not match controller region {{ $controllerRegion }} (would target {{ printf "%s-%s-%s.%s" $cluster $region $gatewayTargetPostfix $domain }})
+        {{- end }}
+      {{- end }}
+      
+      {{- if $shouldCreateRecord }}
+    - dnsName: {{ $dnsName }}
+      recordType: CNAME
+      targets:
+        {{- if eq $appMode "regionbound" }}
+        - {{ printf "%s-%s-%s.%s" $appCluster $appRegion $gatewayTargetPostfix $domain }}
+        {{- else }}
+        - {{ printf "%s-%s-%s.%s" $cluster $region $gatewayTargetPostfix $domain }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+---
+{{- end }}

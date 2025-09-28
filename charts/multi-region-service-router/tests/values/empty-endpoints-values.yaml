@@ -1,0 +1,14 @@
+cluster: aks01
+region: neu
+environmentLetter: d
+domain: aks.example.com
+# Empty apps array to override default values
+apps: []
+externalDns:
+  - controller: external-dns-neu
+    region: neu
+gateways:
+  - name: default-gateway-ingress
+    controller: istio-ingressgateway
+    credentialName: example-cert
+    targetPostfix: external

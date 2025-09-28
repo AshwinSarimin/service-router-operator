@@ -1,0 +1,41 @@
+apps:
+  - name: "app-01"
+    services:
+      internal-gateway-ingress:
+        - "service-01"
+      default-gateway-ingress:
+        - "service-02"
+        - "service-03"
+    environment: dev
+    mode: regionbound
+    region: neu
+  - name: "app-02"
+    services:
+      internal-gateway-ingress:
+        - "service-04"
+      default-gateway-ingress:
+        - "service-05"
+    environment: dev
+    mode: regionbound
+    region: neu
+
+cluster: "aks01"
+region: "neu"
+environmentLetter: "d"
+domain: "aks.example.com"
+
+externalDns:
+  - controller: external-dns-neu
+    region: neu
+  - controller: external-dns-weu
+    region: weu
+
+gateways:
+  - name: "default-gateway-ingress" 
+    controller: "istio-ingressgateway"
+    credentialName: "example-cert"
+    targetPostfix: "external"
+  - name: "internal-gateway-ingress" 
+    controller: "istio-ingressgateway-internal"
+    credentialName: "internal-cert"
+    targetPostfix: "internal"

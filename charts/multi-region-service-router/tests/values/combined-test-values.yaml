@@ -1,0 +1,24 @@
+cluster: aks01
+region: neu
+environmentLetter: d
+domain: aks.example.com
+externalDns:
+  - controller: external-dns-neu
+    region: neu
+apps:
+  - name: app-01
+    services:
+      default-gateway-ingress:
+        - service-01
+      internal-gateway-ingress:
+        - service-02
+    environment: dev
+gateways:
+  - name: default-gateway-ingress
+    controller: istio-ingressgateway
+    credentialName: example-cert
+    targetPostfix: external
+  - name: internal-gateway-ingress
+    controller: istio-ingressgateway-internal
+    credentialName: internal-cert
+    targetPostfix: internal

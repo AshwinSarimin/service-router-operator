@@ -1,0 +1,33 @@
+{{- $cluster := .Values.cluster -}}
+{{- $region := .Values.region -}}
+{{- $domain := .Values.domain -}}
+{{- $environmentLetter := .Values.environmentLetter -}}
+{{- range .Values.gateways }}
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: {{ .name }}
+spec:
+  selector:
+    istio: {{ .controller }}
+  servers:
+    - port:
+        number: {{ default 443 .httpsPortNumber }}
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: {{ .credentialName }}
+      hosts:
+        {{- $gatewayName := .name }}
+        {{- range $.Values.apps }}
+        {{- $namespace := .name }}
+        {{- $environment := .environment }}
+        {{- if hasKey .services $gatewayName }}
+        {{- range (index .services $gatewayName) }}
+        - {{ printf "%s-ns-%s-%s-%s.%s" . $environmentLetter $environment $namespace $domain }}
+        {{- end -}}
+        {{- end -}}
+        {{- end }}
+---
+{{- end }}

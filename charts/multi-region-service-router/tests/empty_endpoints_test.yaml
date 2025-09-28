@@ -1,0 +1,22 @@
+suite: empty endpoints test
+templates:
+  - dnsendpoint.yaml
+release:
+  name: test-release
+  namespace: default
+tests:
+  - it: should create DNSEndpoint resources even with empty endpoints
+    values:
+      - ./values/empty-endpoints-values.yaml
+    asserts:
+      - isKind:
+          of: DNSEndpoint
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: external-dns-neu
+        documentIndex: 0
+      # Verify endpoints exists but is empty
+      - isEmpty:
+          path: spec.endpoints
+        documentIndex: 0

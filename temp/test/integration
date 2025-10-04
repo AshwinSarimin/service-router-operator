@@ -1,0 +1,62 @@
+package integration
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/kubernetes/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"service-router-operator/api/v1"
+	"service-router-operator/internal/controller"
+)
+
+func TestServiceRouterIntegration(t *testing.T) {
+	scheme := runtime.NewScheme()
+	v1.AddToScheme(scheme)
+
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	ctrl := controller.NewServiceRouterController(client)
+
+	// Define your test cases
+	tests := []struct {
+		name     string
+		resource *v1.ServiceRouter
+		wantErr  bool
+	}{
+		{
+			name: "Valid ServiceRouter",
+			resource: &v1.ServiceRouter{
+				// Populate with valid data
+			},
+			wantErr: false,
+		},
+		{
+			name: "Invalid ServiceRouter",
+			resource: &v1.ServiceRouter{
+				// Populate with invalid data
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ctrl.Reconcile(context.Background(), tt.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestMain(m *testing.M) {
+	// Setup code if needed
+	code := m.Run()
+	// Teardown code if needed
+	os.Exit(code)
+}

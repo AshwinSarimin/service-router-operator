@@ -1,0 +1,23 @@
+# This file contains the configuration for the manager of the Kubernetes operator.
+
+manager:
+  healthProbeBindAddress: "0.0.0.0:8081"
+  metricsBindAddress: "0.0.0.0:8080"
+  leaderElection:
+    enabled: true
+    resourceLock: "configmaps"
+    leaseDuration: "60s"
+    renewDeadline: "40s"
+    retryPeriod: "10s"
+  namespace: ""
+  webhook:
+    enabled: true
+    port: 9443
+    path: "/validate"
+    certDir: "/etc/webhook/certs"
+    caBundle: ""
+  controller:
+    serviceRouter:
+      replicas: 1
+      maxConcurrentReconciles: 10
+      syncPeriod: "30s"

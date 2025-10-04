@@ -1,0 +1,65 @@
+# Developer Guide for Service Router Operator
+
+## Introduction
+
+This developer guide provides instructions for contributing to the Service Router Operator project. It covers coding standards, testing requirements, documentation standards, and best practices for logging and observability.
+
+## Go-Specific Coding Standards
+
+### Error Handling
+- Always handle errors explicitly. Use `if err != nil` checks after function calls that return an error.
+- Provide meaningful error messages that can help in debugging.
+- Use `errors.Wrap` from the `github.com/pkg/errors` package to add context to errors.
+
+### Context Usage
+- Use `context.Context` for all function signatures that perform I/O operations or long-running tasks.
+- Pass the context down to all function calls that support it to ensure proper cancellation and timeout handling.
+
+## Kubernetes Resource Handling Patterns
+
+- Follow the controller-runtime patterns for managing Kubernetes resources.
+- Use the `Reconcile` function to implement the reconciliation logic for your custom resources.
+- Ensure that your controller is idempotent; it should handle the same state multiple times without adverse effects.
+
+## Testing Requirements
+
+### Unit Tests
+- Write unit tests for all public functions and methods.
+- Use the `testing` package and consider using `testify` for assertions.
+
+### Integration Tests
+- Create integration tests to verify the interaction between components.
+- Use a test Kubernetes cluster (e.g., KinD or Minikube) for running integration tests.
+
+### End-to-End Tests
+- Implement end-to-end tests to validate the entire operator workflow.
+- Use tools like `kubectl` or client-go to interact with the Kubernetes API during tests.
+
+## Documentation Standards
+
+- Use Markdown for all documentation files.
+- Ensure that all public functions and types are documented with comments explaining their purpose and usage.
+- Maintain a clear structure in the documentation, with sections for installation, usage, and contribution guidelines.
+
+## Logging and Observability Practices
+
+- Use structured logging with a logging library like `logrus` or `zap`.
+- Include context in log messages to make them more informative.
+- Implement metrics collection using Prometheus to monitor the operator's performance and health.
+
+## CI/CD Pipeline Requirements
+
+- Define a CI pipeline in `.github/workflows/ci.yml` to run tests and linting on every pull request.
+- Implement a release pipeline in `.github/workflows/release.yml` to automate the release process to Azure Container Registry (ACR).
+- Ensure that security checks are included in the CI pipeline to scan for vulnerabilities.
+
+## Code Review Criteria
+
+- Ensure that all code changes are accompanied by relevant tests.
+- Check for adherence to Go coding standards and best practices.
+- Verify that documentation is updated to reflect any changes in functionality.
+- Ensure that the code is free of unnecessary complexity and follows the principle of simplicity.
+
+## Conclusion
+
+By following this developer guide, contributors can ensure that the Service Router Operator project maintains high standards of quality, security, and usability. Happy coding!

@@ -1,0 +1,69 @@
+# Design Documentation for Service Router Operator
+
+## Overview
+
+The Service Router Operator is designed to manage the lifecycle of ServiceRouter custom resources in a Kubernetes cluster. It automates the deployment, scaling, and management of services based on user-defined configurations.
+
+## Goals
+
+- Provide a robust and scalable solution for managing service routing in Kubernetes.
+- Ensure high availability and reliability of services.
+- Implement security best practices throughout the operator's architecture.
+
+## Architecture
+
+### Components
+
+1. **Controller**: The core component responsible for reconciling the desired state of ServiceRouter resources with the actual state in the cluster. It watches for changes to ServiceRouter resources and takes appropriate actions.
+
+2. **Admission Webhook**: Validates and mutates incoming requests for ServiceRouter resources. It ensures that only valid configurations are accepted and can modify requests to enforce best practices.
+
+3. **Custom Resource Definitions (CRDs)**: Defines the schema for ServiceRouter resources, allowing users to create and manage these resources declaratively.
+
+4. **Utilities**: A set of helper functions that assist with common operations, improving code reusability and maintainability.
+
+## Go-Specific Coding Standards
+
+- **Error Handling**: Always handle errors explicitly. Use `errors.Wrap` from the `github.com/pkg/errors` package for context-aware error handling.
+- **Context Usage**: Pass `context.Context` through function calls to manage timeouts and cancellation signals effectively.
+
+## Kubernetes Resource Handling Patterns
+
+- Use the controller-runtime library to manage Kubernetes resources.
+- Implement a reconciliation loop that follows the controller pattern, ensuring idempotency in resource management.
+- Leverage informers and listers to efficiently watch and retrieve resources.
+
+## Testing Requirements
+
+- **Unit Tests**: Cover all utility functions and controller logic with unit tests. Use the `testing` package and `gomock` for mocking dependencies.
+- **Integration Tests**: Test interactions with Kubernetes API and ensure that the operator behaves correctly in a real cluster environment.
+- **End-to-End Tests**: Validate the entire operator workflow, from creating a ServiceRouter resource to verifying the expected state in the cluster.
+
+## Documentation Standards
+
+- Maintain clear and concise documentation for all public APIs and components.
+- Use Markdown format for all documentation files.
+- Include examples and usage instructions in the user guide.
+
+## Logging and Observability Practices
+
+- Use structured logging with the `log` package to capture important events and errors.
+- Integrate with observability tools (e.g., Prometheus, Grafana) to monitor the operator's performance and health.
+- Ensure that logs contain sufficient context to facilitate debugging.
+
+## CI/CD Pipeline Requirements
+
+- Implement a CI pipeline that runs unit and integration tests on every pull request.
+- Use GitHub Actions for automated builds and deployments.
+- Ensure that the release pipeline publishes the operator to Azure Container Registry (ACR) and updates the Helm charts.
+
+## Code Review Criteria
+
+- Ensure adherence to coding standards and best practices.
+- Verify that all new features are covered by tests.
+- Check for proper error handling and context usage.
+- Confirm that documentation is updated to reflect any changes made.
+
+## Conclusion
+
+This design document outlines the architecture, goals, and standards for the Service Router Operator. By adhering to these guidelines, we aim to create a reliable and maintainable operator that meets the needs of our users.

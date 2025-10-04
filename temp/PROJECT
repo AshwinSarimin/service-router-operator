@@ -1,0 +1,51 @@
+# Project Metadata
+
+## Project Name
+Service Router Operator
+
+## Description
+The Service Router Operator is a Kubernetes operator designed to manage the lifecycle of ServiceRouter custom resources. It provides functionalities for reconciliation, validation, and mutation of resources, ensuring that the desired state is maintained within the Kubernetes cluster.
+
+## Goals
+- Implement a robust controller for managing ServiceRouter resources.
+- Provide an admission webhook for validating and mutating incoming requests.
+- Ensure high test coverage through unit, integration, and end-to-end tests.
+- Maintain comprehensive documentation for users and developers.
+- Implement CI/CD pipelines for automated testing and deployment.
+
+## Technologies
+- Go (Golang)
+- Kubernetes
+- Docker
+- Helm
+
+## Coding Standards
+- Follow Go-specific coding standards, including proper error handling and context usage.
+- Adhere to Kubernetes resource handling patterns.
+- Ensure all code is idempotent and prioritises security best practices.
+
+## Testing Requirements
+- Unit tests: Cover individual components and functions.
+- Integration tests: Validate interactions between components.
+- End-to-end tests: Ensure the operator works as expected in a real Kubernetes environment.
+
+## Documentation Standards
+- Maintain clear and concise documentation in the `docs` directory.
+- Include design documentation, user guides, and developer guides.
+- Ensure README.md provides setup instructions and usage examples.
+
+## Logging and Observability Practices
+- Implement structured logging throughout the operator.
+- Use appropriate log levels (info, warn, error) to facilitate troubleshooting.
+- Integrate observability tools to monitor the operator's performance and health.
+
+## CI/CD Pipeline Requirements
+- Define CI pipelines for automated testing in `.github/workflows/ci.yml`.
+- Implement release pipelines for deploying to Azure Container Registry (ACR) in `.github/workflows/release.yml`.
+- Include security checks in `.github/workflows/security.yml`.
+
+## Code Review Criteria
+- Ensure all code adheres to the project's coding standards.
+- Verify that tests are included and pass successfully.
+- Check for proper documentation and comments where necessary.
+- Confirm that the code is secure and follows best practices.

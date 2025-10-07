@@ -1,1 +1,0 @@
-// This file is auto-generated. Do not edit it manually. It contains deepcopy functions for the CRD types.

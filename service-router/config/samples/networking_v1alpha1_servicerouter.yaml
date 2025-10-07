@@ -1,0 +1,9 @@
+apiVersion: networking.platform.com/v1alpha1
+kind: ServiceRouter
+metadata:
+  labels:
+    app.kubernetes.io/name: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: servicerouter-sample
+spec:
+  # TODO(user): Add fields here

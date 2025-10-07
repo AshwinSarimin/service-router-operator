@@ -1,0 +1,9 @@
+apiVersion: chaos.platform.com/v1alpha1
+kind: PodRestarter
+metadata:
+  labels:
+    app.kubernetes.io/name: pod-restarter-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: podrestarter-sample
+spec:
+  # TODO(user): Add fields here

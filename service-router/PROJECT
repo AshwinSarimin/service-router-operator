@@ -3,9 +3,19 @@
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
 cliVersion: 4.9.0
-domain: teknologi.nl
+domain: platform.com
 layout:
 - go.kubebuilder.io/v4
-projectName: service-router
-repo: teknologi.nl/service-router
+projectName: service-router-operator
+repo: github.com/AshwinSarimin/service-router-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: platform.com
+  group: networking
+  kind: ServiceRouter
+  path: github.com/AshwinSarimin/service-router-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

@@ -1,4 +1,4 @@
-module teknologi.nl/service-router
+module github.com/AshwinSarimin/service-router-operator
 
 go 1.24.5
 

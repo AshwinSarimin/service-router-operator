@@ -25,57 +25,73 @@ import (
 
 // PodRestarterSpec defines the desired state of PodRestarter
 type PodRestarterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
+	// Selector is the label selector to find pods to restart
+	// +kubebuilder:validation:Required
+	Selector metav1.LabelSelector `json:"selector"`
 
-	// foo is an example field of PodRestarter. Edit podrestarter_types.go to remove/update
-	// +optional
-	Foo *string `json:"foo,omitempty"`
+	// IntervalMinutes is how often to restart pods (in minutes)
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=1440
+	// +kubebuilder:default=5
+	IntervalMinutes int32 `json:"intervalMinutes,omitempty"`
+
+	// Strategy defines how to restart pods
+	// - "all": Restart all matching pods at once
+	// - "rolling": Restart one pod at a time
+	// - "random-one": Restart one random pod
+	// +kubebuilder:validation:Enum=all;rolling;random-one
+	// +kubebuilder:default="all"
+	Strategy string `json:"strategy,omitempty"`
+
+	// MaxConcurrent limits how many pods to restart at once
+	// 0 means no limit
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:default=0
+	MaxConcurrent int32 `json:"maxConcurrent,omitempty"`
+
+	// Suspend will pause pod restarts when true
+	// +kubebuilder:default=false
+	Suspend bool `json:"suspend,omitempty"`
 }
 
 // PodRestarterStatus defines the observed state of PodRestarter.
 type PodRestarterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// TotalRestarts is the total number of pod restarts performed
+	TotalRestarts int32 `json:"totalRestarts,omitempty"`
 
-	// For Kubernetes API conventions, see:
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+	// LastRestartTime is when pods were last restarted
+	LastRestartTime *metav1.Time `json:"lastRestartTime,omitempty"`
 
-	// conditions represent the current state of the PodRestarter resource.
-	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
-	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
-	// The status of each condition is one of True, False, or Unknown.
-	// +listType=map
-	// +listMapKey=type
-	// +optional
+	// NextRestartTime is when pods will be restarted next
+	NextRestartTime *metav1.Time `json:"nextRestartTime,omitempty"`
+
+	// MatchingPods is the current number of pods matching the selector
+	MatchingPods int32 `json:"matchingPods,omitempty"`
+
+	// Conditions represent the latest available observations
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// ObservedGeneration reflects the generation of the most recently observed PodRestarter
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Namespaced
+// +kubebuilder:printcolumn:name="Strategy",type=string,JSONPath=`.spec.strategy`
+// +kubebuilder:printcolumn:name="Interval",type=integer,JSONPath=`.spec.intervalMinutes`
+// +kubebuilder:printcolumn:name="Matching Pods",type=integer,JSONPath=`.status.matchingPods`
+// +kubebuilder:printcolumn:name="Total Restarts",type=integer,JSONPath=`.status.totalRestarts`
+// +kubebuilder:printcolumn:name="Last Restart",type=date,JSONPath=`.status.lastRestartTime`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // PodRestarter is the Schema for the podrestarters API
 type PodRestarter struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// metadata is a standard object metadata
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty,omitzero"`
-
-	// spec defines the desired state of PodRestarter
-	// +required
-	Spec PodRestarterSpec `json:"spec"`
-
-	// status defines the observed state of PodRestarter
-	// +optional
-	Status PodRestarterStatus `json:"status,omitempty,omitzero"`
+	Spec   PodRestarterSpec   `json:"spec,omitempty"`
+	Status PodRestarterStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

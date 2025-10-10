@@ -201,39 +201,53 @@ Cleanup Kind
 kind delete cluster --name pod-restarter-test
 ```
 
-#################################################################
-
-
-
-
 Part 5: Testing in Homelab
 Step 1: Build Container Image
-powershell# Build image (replace with your registry)
-make docker-build IMG=your-registry.io/pod-restarter:v0.1.0
+# Build image (replace with your registry)
+```bash
+make docker-build IMG=teknologieur1acr.azurecr.io/pod-restarter:v0.1.0
+```
 
 # Push to registry
-make docker-push IMG=your-registry.io/pod-restarter:v0.1.0
+```bash
+az login --tenant 99f9af3a-fd8b-41ec-b487-483a0c562b5c
+az acr login --name teknologieur1acr
+make docker-push IMG=teknologieur1acr.azurecr.io/pod-restarter:v0.1.0
+```
+
 Step 2: Deploy to Homelab
-powershell# Switch to homelab context
-kubectl config use-context homelab
+# Switch to homelab context
+```bash
+kubectl config get-contexts
+kubectl config use-context kubernetes-admin@kubernetes
+```
 
 # Install CRDs
+```bash
 make install
+```
 
 # Deploy operator
-make deploy IMG=your-registry.io/pod-restarter:v0.1.0
-Verify:
-powershellkubectl get pods -n pod-restarter-system
-kubectl logs -n pod-restarter-system deployment/pod-restarter-controller-manager -f
+```bash
+make deploy IMG=teknologieur1acr.azurecr.io/pod-restarter:v0.1.0
+
+# Verify
+kubectl get pods -n pod-restarter-operator-system
+kubectl logs -n pod-restarter-operator-system deployment/pod-restarter-operator-controller-manager -f
+```
+
 Step 3: Create Test Workload
-powershell# Create namespace
+```bash
+# Create namespace
 kubectl create namespace test-chaos
 
 # Deploy test app
 kubectl create deployment test-app --image=nginx:alpine --replicas=5 -n test-chaos
-kubectl label deployment test-app app=test -n test-chaos
+```
+
 Step 4: Create PodRestarter
-powershellkubectl apply -n test-chaos -f - <<EOF
+```bash
+kubectl apply -n test-chaos -f - <<EOF
 apiVersion: chaos.platform.com/v1alpha1
 kind: PodRestarter
 metadata:
@@ -241,28 +255,38 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: test
+      app: test-app
   intervalMinutes: 5
   strategy: rolling
   maxConcurrent: 1
 EOF
+```
+
 Step 5: Monitor
-powershell# Watch pods
+```bash
+# Watch pods
 kubectl get pods -n test-chaos --watch
 
 # Check status
 kubectl get podrestarter -n test-chaos test-restarter -o yaml
 
 # Check logs
-kubectl logs -n pod-restarter-system deployment/pod-restarter-controller-manager -f
+kubectl logs -n pod-restarter-operator-system deployment/pod-restarter-operator-controller-manager -f
+```
+
 Cleanup Homelab
-powershellkubectl delete namespace test-chaos
+```bash
+kubectl delete namespace test-chaos
 make undeploy
 make uninstall
+```
 
-Quick Reference
-Common Commands
-bash# Build
+# Quick Reference
+
+## Common Commands
+
+```bash
+# Build
 make manifests generate build
 
 # Test
@@ -278,25 +302,27 @@ make deploy IMG=<image>
 # Cleanup
 make undeploy
 make uninstall
-Troubleshooting
-Pods not restarting?
+```
 
-Check operator logs
-Verify label selector matches
-Check if suspended
+#################################################################
+
+# Troubleshooting
+Pods not restarting?
+- Check operator logs
+- Verify label selector matches
+- Check if suspended
 
 Operator not starting?
 
-Check CRDs installed: kubectl get crd
-Check RBAC permissions
-Check operator logs
+- Check CRDs installed: kubectl get crd
+- Check RBAC permissions
+- Check operator logs
 
 Build fails?
 
-Run make manifests generate
-Check Go syntax
-Verify imports
-
+- Run make manifests generate
+- Check Go syntax
+- Verify imports
 
 What You Learned
 Kubernetes

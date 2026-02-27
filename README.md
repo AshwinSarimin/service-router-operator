@@ -1,3 +1,156 @@
+# Multi region networking
+
+![multi-region](../../assets/images/docs/networking/multi-region.drawio.png)
+
+The AKS platform operates across multiple Azure regions (North Europe and West Europe) to provide high availability, disaster recovery capabilities, and geographic proximity to users. In this multi-region architecture, a critical requirement is the ability to route traffic seamlessly between regions. When an application or service becomes unavailable in one region, whether due to maintenance, failure, or regional issues, traffic must be automatically or manually redirected to a healthy instance in another region. This cross-region routing capability is essential for:
+
+- **High Availability**: Ensuring services remain accessible even when a regional deployment fails
+- **Disaster Recovery**: Enabling failover scenarios during regional outages
+- **Maintenance Windows**: Redirecting traffic during planned maintenance without service disruption
+- **Geographic Optimization**: Routing users to the nearest or best-performing region
+
+Managing DNS across multiple regions presents significant operational complexity: workload teams must route traffic to the correct regional cluster, maintain DNS records across multiple Azure Private DNS zones, handle both regional isolation and cross-region failover scenarios, and prevent conflicts when multiple controllers attempt to manage the same DNS records. Traditional approaches require manual, error-prone DNS management that doesn't scale.
+
+## Service Router Operator
+
+To address these challenges, the [Service Router Operator](https://dev.azure.com/vecozo/Platform/_git/Aks.Operator.ServiceRouter) provides automated DNS management for multi-region deployments:
+
+- **Automates DNS Record Creation**: Automatically generates DNS records based on Custom Resources
+- **Enables Regional Control**: Supports both Active (multi-region) and RegionBound (single-region) operational modes
+- **Prevents Conflicts**: Uses label-based filtering to ensure each region's ExternalDNS instance only manages its designated DNS records
+- **Simplifies Operations**: Workload teams simply declare their services and desired routing behavior using Helm charts
+
+## How it works
+
+The Service Router automates DNS provisioning and traffic routing for services deployed across multiple AKS clusters and regions.
+
+### Components
+
+**Service Router Operator**
+
+The operator manages the lifecycle of DNS records by continuously reconciling Custom Resource Definitions (CRDs) to ensure the desired state matches the actual state.
+
+**ExternalDNS**
+
+ExternalDNS is an AKS platform component that automatically synchronizes Kubernetes networking resources (Services, Ingresses, and DNSEndpoint CRs) with DNS providers like Azure Private DNS zones. It monitors DNSEndpoint custom resources created by the Service Router Operator and provisions the corresponding DNS records.
+
+**Key Architecture**: Each AKS cluster runs multiple ExternalDNS instances, one for each regional DNS zone. This enables seamless failover when a cluster becomes unavailable, as the healthy cluster's ExternalDNS instance can take over DNS management for the failed region. 
+
+**Label-Based Filtering**
+
+The Service Router Operator uses labels to ensure region-specific ExternalDNS instances only manage their designated DNS records. When a DNSEndpoint is created with label `app: external-dns-neu`, only the NEU ExternalDNS instance processes it and creates records in the NEU Private DNS zone. This ensures:
+
+- Prevention of DNS conflicts between regions
+- Independent region management
+- Clear ownership and responsibility
+- Support for both Active and RegionBound operational modes
+
+**Important**: The Service Router Operator does not directly create DNS records. It creates `DNSEndpoint` Custom Resources that ExternalDNS watches and uses to provision DNS records in Azure Private DNS.
+
+By combining the Service Router Operator with ExternalDNS and Azure Private DNS, the platform achieves fully automated, conflict-free DNS management that enables seamless traffic routing between regions.
+
+### DNS Provisioning Workflow
+
+The operator consists of multiple controllers that continuously reconcile the defined Custom Resource Definitions (CRDs) to ensure the desired state matches the actual state. All CRDs are declared in GitOps repositories and reconciled with Flux.
+
+![service-router-components](../../assets/images/docs/networking/service-router-components.png)
+
+**Configuration Responsibilities:**
+
+1. **Platform Team** - Configures platform-level CRDs (ClusterIdentity, DNSConfiguration, Gateway)
+   - See [Custom Resource Definitions](https://dev.azure.com/vecozo/Platform/_git/Aks.Operator.ServiceRouter?path=/docs/ARCHITECTURE.md&anchor=custom-resource-definitions) for details.
+
+2. **Workload Team** - Configures workload-level CRDs:
+   - **ServiceRoute**: Links a service to a Gateway and DNS hostname
+   - **DNSPolicy**: Defines the operational mode (Active or RegionBound) for a namespace
+
+Workload teams can easily configure these CRDs using the [aks-webapp-charts](https://dev.azure.com/vecozo/Platform/_git/Aks.Platform?path=/charts/service/aks-webapp-charts) Helm chart.
+
+**Complete Workflow**:
+
+1. Workload team deploys application with ServiceRoute and DNSPolicy
+2. Service Router Operator reconciles CRDs and creates DNSEndpoint resources
+3. ExternalDNS watches DNSEndpoint resources
+4. ExternalDNS provisions CNAME records in Azure Private DNS zones
+5. DNS records point to the appropriate Istio Ingress Gateway based on the operational mode
+
+For a detailed step-by-step guide, see the [User Guide](https://dev.azure.com/vecozo/Platform/_git/Aks.Operator.ServiceRouter?path=%2Fdocs%2FUSER-GUIDE.md&version=GBmain&_a=preview).
+
+### Operational Modes
+
+The Service Router supports two operational modes that determine how DNS records are managed across regions:
+
+- **Active Mode**: Each cluster manages DNS records for its own region (Active-Active deployment)
+- **RegionBound Mode**: One cluster manages DNS records for multiple regions (Active-Passive deployment)
+
+#### Choosing the Right Mode
+
+| Requirement | Recommended Mode |
+|-------------|------------------|
+| Workload deployed in multiple regions | **Active** |
+| Low latency for regional users | **Active** |
+| Data residency or compliance requirements | **Active** |
+| Workload deployed in single region only | **RegionBound** |
+| Cost optimization (fewer deployments) | **RegionBound** |
+| Centralized data access (single database) | **RegionBound** |
+
+#### Active Mode
+
+Use **Active Mode** when your workload is deployed in multiple regions. Regional users will use local traffic routing (low latency) with regional isolation and independent failover.
+
+![Active-mode](../../assets/images/docs/networking/Mode-Active.png)
+
+- NEU cluster creates: `app1.aks.veczd.vczc.nl` → `aks01-neu-ingressgateway-internal.aks.veczd.vczc.nl`
+- WEU cluster creates: `app1.aks.veczd.vczc.nl` → `aks01-weu-ingressgateway-internal.aks.veczd.vczc.nl`
+- Each region has its own DNS record pointing to its local gateway
+
+
+#### RegionBound Mode
+
+Use **RegionBound Mode** when your workload is deployed in only one region and cross-region latency is acceptable for users in other regions.
+
+![RegionBound-mode](../../assets/images/docs/networking/Mode-Regionbound.png)
+
+- WEU ExternalDNS creates record in WEU DNS zone
+- NEU ExternalDNS creates record in NEU DNS zone
+- Both records point to WEU cluster
+- Clients in both regions route to WEU cluster, regardless of client location
+
+#### Comparison
+
+| Aspect | Active Mode | RegionBound Mode |
+|--------|-------------|------------------|
+| **DNS Scope** | Each cluster manages only its region | One cluster manages multiple regions |
+| **Controller Selection** | Only matching cluster's region | All configured regions |
+| **Traffic Pattern** | Regional (clients route locally) | Centralized (clients route cross-region) |
+| **Use Case** | Latency optimization, data sovereignty | Cost optimization, regions without clusters |
+| **Failover** | Regional (per-cluster) | Centralized (single source cluster) |
+| **Policy Activation** | Active in all clusters (by default) | Active only in `sourceRegion` cluster |
+
+### DNS Resolution Flow
+
+Regardless of operational mode, the DNS resolution flow is the same:
+
+```
+1. Client Query
+   → myapp-ns-p-prod-app1.aks.vecp.vczc.nl
+
+2. DNS Server: CNAME Lookup
+   → Returns: aks01-weu-ingressgateway-internal.aks.vecp.vczc.nl
+
+3. DNS Server: A Record Lookup
+   → Returns: 10.123.45.67 (Load Balancer IP)
+
+4. Client Connects
+   → 10.123.45.67:443 (Istio Ingress Gateway)
+
+5. Istio Routes
+   → Backend service in User Subnet
+```
+
+
+
+
 # Service Router Operator
 
 A Kubernetes operator for managing DNS records and Istio traffic routing across multi-cluster, multi-region deployments.

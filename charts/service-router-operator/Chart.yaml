@@ -1,0 +1,17 @@
+apiVersion: v2
+name: service-router-operator
+description: A Kubernetes operator for managing service routing across multiple clusters
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+keywords:
+  - kubernetes
+  - operator
+  - routing
+  - multi-cluster
+  - istio
+maintainers:
+  - name: service-router-operator
+    url: https://github.com/vecozo/service-router-operator
+sources:
+  - https://github.com/vecozo/service-router-operator

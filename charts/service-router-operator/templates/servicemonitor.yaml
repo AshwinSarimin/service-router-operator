@@ -1,0 +1,29 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: {{ if .Values.serviceMonitor.azureManaged }}azmonitoring.coreos.com/v1{{ else }}monitoring.coreos.com/v1{{ end }}
+kind: ServiceMonitor
+metadata:
+  name: {{ include "service-router-operator.fullname" . }}-metrics-monitor
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "service-router-operator.labels" . | nindent 4 }}
+    {{- with .Values.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  endpoints:
+  - path: /metrics
+    port: {{ if .Values.metrics.kubeRbacProxy.enabled }}https{{ else }}metrics{{ end }}
+    scheme: {{ if .Values.metrics.kubeRbacProxy.enabled }}https{{ else }}http{{ end }}
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tlsConfig:
+      insecureSkipVerify: true
+    {{- if .Values.serviceMonitor.interval }}
+    interval: {{ .Values.serviceMonitor.interval }}
+    {{- end }}
+    {{- if .Values.serviceMonitor.scrapeTimeout }}
+    scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+    {{- end }}
+  selector:
+    matchLabels:
+      {{- include "service-router-operator.selectorLabels" . | nindent 6 }}
+{{- end }}

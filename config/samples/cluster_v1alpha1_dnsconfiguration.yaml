@@ -1,0 +1,16 @@
+apiVersion: cluster.router.io/v1alpha1
+kind: DNSConfiguration
+metadata:
+  labels:
+    app.kubernetes.io/name: dnsconfiguration
+    app.kubernetes.io/instance: dnsconfiguration-sample
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: service-router-operator
+  name: dnsconfiguration-sample
+spec:
+  externalDNSControllers:
+    - name: external-dns-neu
+      region: neu
+    - name: external-dns-weu
+      region: weu

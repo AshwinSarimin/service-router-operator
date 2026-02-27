@@ -1,0 +1,99 @@
+%%{init: {'theme':'base', 'themeVariables': {'primaryTextColor':'#000000', 'primaryColor':'#e3f2fd', 'primaryBorderColor':'#1565c0', 'lineColor':'#333333', 'secondaryColor':'#fff3e0', 'tertiaryColor':'#e8f5e9', 'noteTextColor':'#000000', 'noteBkgColor':'#fff9c4', 'noteBorderColor':'#f57f17'}}}%%
+%% Service Router Operator - CRD Relationships and Ownership
+%% Shows how CRDs relate to each other and who owns them
+
+graph TB
+    %% Ownership Legend
+    subgraph legend["👥 Ownership Legend"]
+        platform["🔧 Platform Team<br/>(Cluster Admin)"]
+        app["👨‍💻 Application Team<br/>(Namespace Admin)"]
+        operator["⚙️ Operator<br/>(Generated)"]
+        external["🔌 External System<br/>(ExternalDNS)"]
+    end
+
+    %% Cluster-Scoped Resources
+    subgraph clusterScope["🌐 Cluster-Scoped Resources (Platform Team)"]
+        clusterIdentity["ClusterIdentity<br/>───────<br/>🔧 Platform Owned<br/>📍 Cluster Scoped<br/>🔒 Singleton<br/>───────<br/>Defines:<br/>• Region<br/>• Cluster ID<br/>• Domain<br/>• Environment<br/>• Adopted Regions"]
+
+        dnsConfiguration["DNSConfiguration<br/>───────<br/>🔧 Platform Owned<br/>📍 Cluster Scoped<br/>🔒 Singleton<br/>───────<br/>Defines:<br/>• All ExternalDNS controllers<br/>• Controller-to-region mapping"]
+    end
+
+    %% Namespace-Scoped Resources
+    subgraph namespaceScope["📦 Namespace-Scoped Resources"]
+        gateway["Gateway<br/>───────<br/>🔧 Platform Owned<br/>📍 Namespace Scoped<br/>🔁 Reusable<br/>───────<br/>Defines:<br/>• Istio Gateway selector<br/>• TLS certificate<br/>• Target postfix"]
+
+        dnsPolicy["DNSPolicy<br/>───────<br/>👨‍💻 Application Owned<br/>📍 Namespace Scoped<br/>🔁 One per namespace<br/>───────<br/>Defines:<br/>• Mode (Active/RegionBound)<br/>• Source region/cluster<br/>───────<br/>Status:<br/>• activeControllers (computed)"]
+
+        serviceRoute["ServiceRoute<br/>───────<br/>👨‍💻 Application Owned<br/>📍 Namespace Scoped<br/>🔁 Multiple per namespace<br/>───────<br/>Defines:<br/>• Service name<br/>• Gateway reference<br/>• Environment label<br/>• Application label<br/>───────<br/>Status:<br/>• DNS records created<br/>• Reconciliation state"]
+    end
+
+    %% Generated Istio Resources
+    subgraph istioResources["🌊 Generated Istio Resources"]
+        istioGateway["Istio Gateway<br/>───────<br/>⚙️ Operator Generated<br/>📍 Namespace Scoped<br/>───────<br/>Contains:<br/>• Host wildcard (*.domain)<br/>• TLS configuration<br/>• Gateway selector<br/>───────<br/>Owner: Gateway CRD"]
+    end
+
+    %% Generated DNS Resources
+    subgraph dnsResources["🔌 Generated DNS Resources"]
+        dnsEndpoint["DNSEndpoint CRDs<br/>───────<br/>⚙️ Operator Generated<br/>📍 Namespace Scoped<br/>🔁 One per controller<br/>───────<br/>Contains:<br/>• DNS hostname<br/>• Target hostname<br/>• Controller annotation<br/>───────<br/>Owner: ServiceRoute CRD"]
+
+        azureDNS["Azure Private DNS<br/>───────<br/>🔌 ExternalDNS Managed<br/>☁️ Cloud Resource<br/>───────<br/>Contains:<br/>• A records<br/>• TTL<br/>• Target IP resolution"]
+    end
+
+    %% Relationships - Reading
+    clusterIdentity -.->|"Read by"| gateway
+    clusterIdentity -.->|"Read by"| dnsPolicy
+    clusterIdentity -.->|"Read by"| serviceRoute
+    dnsConfiguration -.->|"Read by"| dnsPolicy
+    gateway -.->|"Read by"| serviceRoute
+    dnsPolicy -.->|"Read by"| serviceRoute
+
+    %% Relationships - Generation
+    gateway -->|"Generates<br/>(ownerRef)"| istioGateway
+    serviceRoute -->|"Generates<br/>(ownerRef)"| dnsEndpoint
+    dnsEndpoint -->|"Watched by<br/>ExternalDNS"| azureDNS
+
+    %% Cross-references
+    serviceRoute -.->|"References<br/>(spec.gatewayName)"| gateway
+
+    %% Cardinality Notes
+    subgraph cardinality["📊 Cardinality Rules"]
+        c1["1️⃣ ClusterIdentity per cluster"]
+        c2["1️⃣ DNSConfiguration per cluster"]
+        c3["N️⃣ Gateways (typically in istio-system)"]
+        c4["1️⃣ DNSPolicy per namespace"]
+        c5["N️⃣ ServiceRoutes per namespace"]
+        c6["N️⃣ DNSEndpoints per ServiceRoute<br/>(one per active controller)"]
+    end
+
+    %% Reconciliation Flow
+    subgraph reconciliation["🔄 Reconciliation Order"]
+        r1["1️⃣ ClusterIdentity reconciled<br/>→ Cached"]
+        r2["2️⃣ DNSConfiguration reconciled<br/>→ Cached"]
+        r3["3️⃣ Gateway reconciled<br/>→ Creates Istio Gateway"]
+        r4["4️⃣ DNSPolicy reconciled<br/>→ Computes activeControllers"]
+        r5["5️⃣ ServiceRoute reconciled<br/>→ Creates DNSEndpoints"]
+
+        r1 --> r2 --> r3 --> r4 --> r5
+    end
+
+    %% Deletion Cascade
+    subgraph deletion["🗑️ Deletion Cascade (ownerReferences)"]
+        d1["Delete Gateway<br/>→ Istio Gateway deleted"]
+        d2["Delete ServiceRoute<br/>→ DNSEndpoints deleted"]
+        d3["Delete DNSEndpoint<br/>→ DNS records removed<br/>(by ExternalDNS)"]
+
+        d1 --> d2 --> d3
+    end
+
+    %% Styling
+    classDef platformOwned fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    classDef appOwned fill:#fff3e0,stroke:#e65100,stroke-width:3px
+    classDef generated fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef external fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef info fill:#fff9c4,stroke:#f57f17,stroke-width:1px
+
+    class clusterIdentity,dnsConfiguration,gateway platformOwned
+    class dnsPolicy,serviceRoute appOwned
+    class istioGateway,dnsEndpoint generated
+    class azureDNS external
+    class c1,c2,c3,c4,c5,c6,r1,r2,r3,r4,r5,d1,d2,d3,platform,app,operator,external info

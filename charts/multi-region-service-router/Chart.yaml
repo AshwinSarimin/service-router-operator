@@ -1,4 +1,0 @@
-apiVersion: v2
-name: multi-region-service-router
-version: 1.0.0
-description: A Helm chart for multi-region DNS routing and Istio gateway configuration

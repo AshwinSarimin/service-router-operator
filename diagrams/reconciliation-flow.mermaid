@@ -1,0 +1,113 @@
+%%{init: {'theme':'base', 'themeVariables': {'primaryTextColor':'#000000', 'actorTextColor':'#000000', 'signalTextColor':'#000000', 'labelTextColor':'#000000', 'loopTextColor':'#000000', 'noteTextColor':'#000000', 'activationBorderColor':'#333333', 'sequenceNumberColor':'#000000', 'primaryColor':'#e3f2fd', 'primaryBorderColor':'#1565c0', 'lineColor':'#333333'}}}%%
+%% Service Router Operator - Reconciliation Flow Sequence Diagram
+%% This shows the complete flow from CRD creation to DNS resolution
+
+sequenceDiagram
+    autonumber
+
+    box Platform Team Setup
+        participant PT as Platform Team
+        participant K8s as Kubernetes API
+    end
+
+    box Service Router Operator
+        participant CIC as ClusterIdentity<br/>Controller
+        participant DCC as DNSConfiguration<br/>Controller
+        participant GC as Gateway<br/>Controller
+        participant DPC as DNSPolicy<br/>Controller
+        participant SRC as ServiceRoute<br/>Controller
+        participant Cache as Internal<br/>Cache
+    end
+
+    box Application Team
+        participant AT as Application Team
+    end
+
+    box Generated Resources
+        participant IG as Istio<br/>Gateway
+        participant DE as DNSEndpoint<br/>CRDs
+    end
+
+    box External Systems
+        participant ED as ExternalDNS
+        participant DNS as Azure Private<br/>DNS
+        participant Client as End User
+        participant LB as Load<br/>Balancer
+    end
+
+    Note over PT,K8s: Step 1: Platform Team Setup
+    PT->>K8s: Create ClusterIdentity<br/>(region=weu, cluster=aks01)
+    K8s->>CIC: Watch event: ClusterIdentity created
+    CIC->>CIC: Validate ClusterIdentity
+    CIC->>Cache: Store ClusterIdentity data
+    CIC->>K8s: Update ClusterIdentity status<br/>(phase=Active)
+
+    PT->>K8s: Create DNSConfiguration<br/>(external-dns-weu, external-dns-neu)
+    K8s->>DCC: Watch event: DNSConfiguration created
+    DCC->>DCC: Validate DNSConfiguration
+    DCC->>Cache: Store DNSConfiguration data
+    DCC->>K8s: Update DNSConfiguration status<br/>(Ready=True)
+
+    PT->>K8s: Create Gateway<br/>(controller=istio-gateway)
+    K8s->>GC: Watch event: Gateway created
+    GC->>Cache: Read ClusterIdentity<br/>(get domain, region)
+    Cache-->>GC: Return cluster metadata
+    GC->>IG: Create Istio Gateway<br/>(hosts=*.example.com, tls=SIMPLE)
+    IG->>LB: Bind to Load Balancer Service
+    LB-->>IG: Assign IP address
+    GC->>K8s: Update Gateway status<br/>(loadBalancerIP=x.x.x.x)
+
+    Note over AT,K8s: Step 2: Application Team Configuration
+    AT->>K8s: Create DNSPolicy<br/>(mode=Active, sourceRegion=weu)
+    K8s->>DPC: Watch event: DNSPolicy created
+    DPC->>Cache: Read DNSConfiguration<br/>(get available controllers)
+    Cache-->>DPC: Return controller list
+    DPC->>Cache: Read ClusterIdentity<br/>(get current region)
+    Cache-->>DPC: Return region=weu
+    DPC->>DPC: Calculate active controllers<br/>(filter by mode and region)
+    DPC->>K8s: Update DNSPolicy status<br/>(activeControllers=[external-dns-weu])
+
+    AT->>K8s: Create ServiceRoute<br/>(serviceName=myapp, gatewayName=default)
+    K8s->>SRC: Watch event: ServiceRoute created
+
+    Note over SRC,Cache: Step 3: ServiceRoute Reconciliation
+    SRC->>Cache: Read ClusterIdentity
+    Cache-->>SRC: Return cluster metadata
+    SRC->>K8s: Get Gateway resource
+    K8s-->>SRC: Return Gateway spec
+    SRC->>K8s: Get DNSPolicy resource
+    K8s-->>SRC: Return DNSPolicy with<br/>status.activeControllers
+
+    SRC->>SRC: Calculate DNS hostname:<br/>myapp-p-web.example.com
+    SRC->>SRC: Calculate target hostname:<br/>aks01-weu-internal.example.com
+
+    SRC->>DE: Create/Update DNSEndpoint<br/>(controller=external-dns-weu<br/>target=aks01-weu-internal)
+
+    alt RegionBound Mode
+        SRC->>DE: Create additional DNSEndpoints<br/>for each active controller
+    end
+
+    SRC->>K8s: Update ServiceRoute status<br/>(phase=Active, dnsRecords=[...])
+
+    Note over ED,DNS: Step 4: ExternalDNS Reconciliation
+    ED->>DE: Watch DNSEndpoint resources
+    ED->>ED: Filter by controller name<br/>(external-dns-weu)
+    ED->>DNS: Create/Update DNS A record<br/>myapp-p-web.example.com → aks01-weu-internal
+    ED->>DNS: Resolve target hostname<br/>aks01-weu-internal → x.x.x.x
+
+    Note over Client,LB: Step 5: Client Request Flow
+    Client->>DNS: DNS query:<br/>myapp-p-web.example.com
+    DNS-->>Client: Response: x.x.x.x<br/>(Load Balancer IP)
+
+    Client->>LB: HTTPS GET<br/>Host: myapp-p-web.example.com
+    LB->>IG: Forward to Istio Gateway<br/>(SNI: myapp-p-web.example.com)
+    IG->>IG: Route to backend:<br/>myapp.namespace.svc
+    IG-->>Client: HTTP 200 OK
+
+    Note over PT,Client: Update Flow: ServiceRoute Change
+    AT->>K8s: Update ServiceRoute<br/>(change environment label)
+    K8s->>SRC: Watch event: ServiceRoute updated
+    SRC->>SRC: Recalculate DNS hostname
+    SRC->>DE: Update DNSEndpoint
+    DE->>ED: Watch event detected
+    ED->>DNS: Update DNS records

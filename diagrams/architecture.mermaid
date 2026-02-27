@@ -1,0 +1,124 @@
+%%{init: {'theme':'base', 'themeVariables': {'primaryTextColor':'#000000', 'primaryColor':'#e3f2fd', 'primaryBorderColor':'#1565c0', 'lineColor':'#333333', 'secondaryColor':'#fff3e0', 'tertiaryColor':'#e8f5e9', 'noteTextColor':'#000000', 'noteBkgColor':'#fff9c4', 'noteBorderColor':'#f57f17'}}}%%
+%% Service Router Operator - Architecture Diagram (Vertical Flow)
+%% This diagram shows the complete architecture from user actions to infrastructure
+
+graph TB
+    %% STEP 1: Platform Team Creates (Cluster-Level)
+    subgraph platformCreates["1️⃣ PLATFORM TEAM CREATES"]
+        direction TB
+        clusterIdentity["ClusterIdentity<br/>───────<br/>region: weu<br/>cluster: aks01<br/>domain: example.com<br/>environmentLetter: p"]
+        dnsConfig["DNSConfiguration<br/>───────<br/>externalDNSControllers:<br/>- external-dns-weu<br/>- external-dns-neu<br/>- external-dns-frc"]
+        gateway["Gateway<br/>───────<br/>controller: istio-gateway<br/>credentialName: tls-cert<br/>targetPostfix: internal"]
+    end
+
+    %% STEP 2: Application Team Creates (Namespace-Level)
+    subgraph appCreates["2️⃣ APPLICATION TEAM CREATES"]
+        direction TB
+        dnsPolicy["DNSPolicy<br/>───────<br/>mode: Active/RegionBound<br/>sourceRegion: weu<br/>status.activeControllers"]
+        serviceRoute["ServiceRoute<br/>───────<br/>serviceName: myapp<br/>gatewayName: default<br/>environment: prod<br/>application: web"]
+    end
+
+    %% STEP 3: Operator Watches & Reads
+    subgraph operatorWatches["3️⃣ OPERATOR WATCHES & READS"]
+        direction TB
+        ciController["ClusterIdentity Controller<br/>Watches: ClusterIdentity"]
+        dnsConfigController["DNSConfiguration Controller<br/>Watches: DNSConfiguration"]
+        gatewayController["Gateway Controller<br/>Watches: Gateway"]
+        dnsPolicyController["DNSPolicy Controller<br/>Watches: DNSPolicy"]
+        serviceRouteController["ServiceRoute Controller<br/>Watches: ServiceRoute"]
+
+        cache["Internal Cache<br/>───────<br/>ClusterIdentity<br/>DNSConfiguration"]
+    end
+
+    %% STEP 4: Operator Generates
+    subgraph operatorGenerates["4️⃣ OPERATOR GENERATES"]
+        direction TB
+        istioGateway["Istio Gateway<br/>───────<br/>hosts: *.example.com<br/>tls: SIMPLE"]
+        dnsEndpoint1["DNSEndpoint (weu)<br/>───────<br/>myapp-p-web.example.com<br/>→ aks01-weu-internal"]
+        dnsEndpoint2["DNSEndpoint (neu)<br/>───────<br/>myapp-p-web.example.com<br/>→ aks01-weu-internal"]
+    end
+
+    %% STEP 5: External Systems Process
+    subgraph externalProcesses["5️⃣ EXTERNAL SYSTEMS PROCESS"]
+        direction TB
+        externalDNS["ExternalDNS<br/>Watches DNSEndpoints"]
+        privateDNS["Azure Private DNS<br/>───────<br/>myapp-p-web.example.com<br/>→ x.x.x.x"]
+        loadBalancer["Azure Load Balancer<br/>───────<br/>Public IP: x.x.x.x"]
+    end
+
+    %% STEP 6: Application Services
+    subgraph appServices["6️⃣ APPLICATION SERVICES"]
+        direction TB
+        k8sService["Kubernetes Service<br/>myapp.namespace.svc"]
+        pods["Application Pods"]
+    end
+
+    %% STEP 7: End User Access
+    subgraph endUserAccess["7️⃣ END USER ACCESS"]
+        direction TB
+        endUser["End User<br/>───────<br/>1. DNS Query<br/>2. HTTPS Request"]
+    end
+
+    %% Flow: Platform Team → Operator
+    clusterIdentity --> ciController
+    dnsConfig --> dnsConfigController
+    gateway --> gatewayController
+
+    %% Flow: Application Team → Operator
+    dnsPolicy --> dnsPolicyController
+    serviceRoute --> serviceRouteController
+
+    %% Flow: Controllers → Cache
+    ciController --> cache
+    dnsConfigController --> cache
+
+    %% Flow: Controllers Read Cache
+    gatewayController -.->|"Reads"| cache
+    dnsPolicyController -.->|"Reads"| cache
+    serviceRouteController -.->|"Reads"| cache
+
+    %% Flow: ServiceRoute Controller Reads
+    serviceRouteController -.->|"Reads"| gateway
+    serviceRouteController -.->|"Reads"| dnsPolicy
+
+    %% Flow: DNSPolicy Controller Updates
+    dnsPolicyController -->|"Updates Status"| dnsPolicy
+
+    %% Flow: Operator → Generated Resources
+    gatewayController --> istioGateway
+    serviceRouteController --> dnsEndpoint1
+    serviceRouteController --> dnsEndpoint2
+
+    %% Flow: Generated → External Systems
+    istioGateway --> loadBalancer
+    dnsEndpoint1 --> externalDNS
+    dnsEndpoint2 --> externalDNS
+    externalDNS --> privateDNS
+
+    %% Flow: Infrastructure → Services
+    loadBalancer --> istioGateway
+    istioGateway --> k8sService
+    k8sService --> pods
+
+    %% Flow: End User
+    endUser -->|"DNS Query"| privateDNS
+    privateDNS -.->|"Returns IP"| endUser
+    endUser -->|"HTTPS Request"| loadBalancer
+    loadBalancer -.->|"Response"| endUser
+
+    %% Styling
+    classDef platformStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,color:#000000
+    classDef appStyle fill:#fff3e0,stroke:#e65100,stroke-width:3px,color:#000000
+    classDef operatorStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef generatedStyle fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,color:#000000
+    classDef externalStyle fill:#fce4ec,stroke:#880e4f,stroke-width:2px,color:#000000
+    classDef serviceStyle fill:#e0f2f1,stroke:#004d40,stroke-width:2px,color:#000000
+    classDef userStyle fill:#fff9c4,stroke:#f57f17,stroke-width:3px,color:#000000
+
+    class clusterIdentity,dnsConfig,gateway platformStyle
+    class dnsPolicy,serviceRoute appStyle
+    class ciController,dnsConfigController,gatewayController,dnsPolicyController,serviceRouteController,cache operatorStyle
+    class istioGateway,dnsEndpoint1,dnsEndpoint2 generatedStyle
+    class externalDNS,privateDNS,loadBalancer externalStyle
+    class k8sService,pods serviceStyle
+    class endUser userStyle

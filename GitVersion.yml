@@ -1,0 +1,6 @@
+#semantic-version-format: Strict
+
+branches:
+  feature:
+    mode: ContinuousDelivery
+    label: develop

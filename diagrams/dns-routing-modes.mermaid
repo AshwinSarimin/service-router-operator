@@ -1,0 +1,115 @@
+%%{init: {'theme':'base', 'themeVariables': {'primaryTextColor':'#000000', 'primaryColor':'#e3f2fd', 'primaryBorderColor':'#1565c0', 'lineColor':'#333333', 'secondaryColor':'#fff3e0', 'tertiaryColor':'#e8f5e9', 'noteTextColor':'#000000', 'noteBkgColor':'#fff9c4', 'noteBorderColor':'#f57f17'}}}%%
+%% Service Router Operator - DNS Routing Modes
+%% Shows the difference between Active mode and RegionBound mode
+
+graph TB
+    subgraph scenario["📋 Scenario: 3 Regions, WEU Cluster Active"]
+        note["ClusterIdentity: region=weu, cluster=aks01<br/>DNSConfiguration: external-dns-weu, external-dns-neu, external-dns-frc"]
+    end
+
+    %% Active Mode
+    subgraph activeMode["🟢 Active Mode (Regional Isolation)"]
+        direction TB
+        activeDNSPolicy["DNSPolicy<br/>───────<br/>mode: Active<br/>sourceRegion: weu"]
+
+        activeLogic["Logic:<br/>───────<br/>Current region: weu<br/>Filter controllers where<br/>region == weu"]
+
+        activeControllers["status.activeControllers:<br/>───────<br/>✅ external-dns-weu"]
+
+        activeDNSPolicy --> activeLogic
+        activeLogic --> activeControllers
+
+        subgraph activeDNS["DNS Records Created"]
+            activeWEU["West Europe DNS Zone<br/>───────<br/>myapp.example.com<br/>→ aks01-weu-internal"]
+        end
+
+        activeControllers --> activeWEU
+
+        subgraph activeResult["Result"]
+            activeTraffic["✅ WEU clients → WEU cluster<br/>❌ NEU clients → no DNS record<br/>❌ FRC clients → no DNS record"]
+        end
+
+        activeDNS --> activeResult
+    end
+
+    %% RegionBound Mode
+    subgraph regionBoundMode["🔵 RegionBound Mode (Cross-Region Consolidation)"]
+        direction TB
+        rbDNSPolicy["DNSPolicy<br/>───────<br/>mode: RegionBound<br/>sourceRegion: weu<br/>sourceCluster: aks01"]
+
+        rbLogic["Logic:<br/>───────<br/>Include ALL controllers"]
+
+        rbControllers["status.activeControllers:<br/>───────<br/>✅ external-dns-weu<br/>✅ external-dns-neu<br/>✅ external-dns-frc"]
+
+        rbDNSPolicy --> rbLogic
+        rbLogic --> rbControllers
+
+        subgraph rbDNS["DNS Records Created"]
+            rbWEU["West Europe DNS Zone<br/>───────<br/>myapp.example.com<br/>→ aks01-weu-internal"]
+            rbNEU["North Europe DNS Zone<br/>───────<br/>myapp.example.com<br/>→ aks01-weu-internal"]
+            rbFRC["France Central DNS Zone<br/>───────<br/>myapp.example.com<br/>→ aks01-weu-internal"]
+        end
+
+        rbControllers --> rbWEU
+        rbControllers --> rbNEU
+        rbControllers --> rbFRC
+
+        subgraph rbResult["Result"]
+            rbTraffic["✅ WEU clients → WEU cluster<br/>✅ NEU clients → WEU cluster<br/>✅ FRC clients → WEU cluster<br/>(Cross-region traffic)"]
+        end
+
+        rbDNS --> rbResult
+    end
+
+    %% Migration Scenario
+    subgraph migrationMode["🔄 Migration Scenario: Orphan Region Adoption"]
+        direction TB
+        migrationCI["ClusterIdentity<br/>───────<br/>region: weu<br/>cluster: aks01<br/>adoptsRegions: [frc]"]
+
+        migrationDNSPolicy["DNSPolicy<br/>───────<br/>mode: Active<br/>sourceRegion: weu"]
+
+        migrationLogic["Logic:<br/>───────<br/>Current region: weu<br/>Adopted regions: [frc]<br/>Include controllers where<br/>region IN [weu, frc]"]
+
+        migrationControllers["status.activeControllers:<br/>───────<br/>✅ external-dns-weu<br/>✅ external-dns-frc"]
+
+        migrationCI --> migrationLogic
+        migrationDNSPolicy --> migrationLogic
+        migrationLogic --> migrationControllers
+
+        subgraph migrationDNS["DNS Records Created"]
+            migWEU["West Europe DNS Zone<br/>───────<br/>myapp.example.com<br/>→ aks01-weu-internal"]
+            migFRC["France Central DNS Zone<br/>───────<br/>myapp.example.com<br/>→ aks01-weu-internal"]
+        end
+
+        migrationControllers --> migWEU
+        migrationControllers --> migFRC
+
+        subgraph migrationResult["Result"]
+            migTraffic["✅ WEU clients → WEU cluster<br/>❌ NEU clients → no DNS record<br/>✅ FRC clients → WEU cluster<br/>(FRC region adopted by WEU)"]
+        end
+
+        migrationDNS --> migrationResult
+    end
+
+    %% Use Case Descriptions
+    subgraph useCases["💡 When to Use Each Mode"]
+        direction TB
+        activeUC["Active Mode<br/>───────<br/>✓ Regional isolation required<br/>✓ Data residency requirements<br/>✓ Each region has its own cluster<br/>✓ No cross-region traffic desired"]
+
+        rbUC["RegionBound Mode<br/>───────<br/>✓ Single cluster serves all regions<br/>✓ Cross-region failover<br/>✓ Cost optimization (fewer clusters)<br/>✓ Centralized traffic management"]
+
+        migUC["Orphan Region Adoption<br/>───────<br/>✓ Cluster migration in progress<br/>✓ Temporary cluster unavailability<br/>✓ Gradual region consolidation<br/>✓ Disaster recovery scenario"]
+    end
+
+    %% Styling
+    classDef modeStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    classDef resourceStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef logicStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef resultStyle fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef useCaseStyle fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    class activeMode,regionBoundMode,migrationMode modeStyle
+    class activeDNSPolicy,rbDNSPolicy,migrationDNSPolicy,migrationCI resourceStyle
+    class activeLogic,rbLogic,migrationLogic,activeControllers,rbControllers,migrationControllers logicStyle
+    class activeResult,rbResult,migrationResult,activeTraffic,rbTraffic,migTraffic resultStyle
+    class activeUC,rbUC,migUC useCaseStyle

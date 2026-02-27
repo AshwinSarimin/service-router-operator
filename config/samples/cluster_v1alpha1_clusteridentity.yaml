@@ -1,0 +1,15 @@
+apiVersion: cluster.router.io/v1alpha1
+kind: ClusterIdentity
+metadata:
+  labels:
+    app.kubernetes.io/name: clusteridentity
+    app.kubernetes.io/instance: clusteridentity-sample
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: service-router-operator
+  name: clusteridentity-sample
+spec:
+  region: weu
+  cluster: kind
+  domain: kind.local
+  environmentLetter: d

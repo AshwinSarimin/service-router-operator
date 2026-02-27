@@ -1,0 +1,27 @@
+# permissions for end users to view clusteridentities.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: clusteridentity-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: service-router-operator
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: clusteridentity-viewer-role
+rules:
+- apiGroups:
+  - cluster.router.io
+  resources:
+  - clusteridentities
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.router.io
+  resources:
+  - clusteridentities/status
+  verbs:
+  - get

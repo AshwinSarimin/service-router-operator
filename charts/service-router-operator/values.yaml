@@ -1,0 +1,143 @@
+# Default values for service-router-operator.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: localhost:5001/controller
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Controller configuration
+controller:
+  # Log level: debug, info, error
+  logLevel: info
+  # Enable leader election
+  leaderElection: true
+  # Default namespace for router gateways
+  defaultRouterGatewayNamespace: "istio-system"
+  # Enable development mode (more verbose logging)
+  development: false
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "controller-manager"
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  # fsGroup: 2000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - "ALL"
+  readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+# Production replica settings
+production:
+  enabled: false
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  podAntiAffinity:
+    enabled: true
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Monitoring
+metrics:
+  enabled: false
+  # Port for metrics endpoint
+  port: 8080
+  # Service for metrics
+  # IMPORTANT: Set port to match the correct container port:
+  #   - If kubeRbacProxy.enabled: use kubeRbacProxy.port (default 8443)
+  #   - If kubeRbacProxy.disabled: use metrics.port (default 8080)
+  service:
+    type: ClusterIP
+    port: 8080  # Set to 8443 if kubeRbacProxy is enabled
+    annotations: {}
+  # kube-rbac-proxy sidecar settings - when enabled, the manager will bind metrics to localhost
+  kubeRbacProxy:
+    enabled: false
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.14.1
+      pullPolicy: IfNotPresent
+    # Args passed to kube-rbac-proxy; default mirrors common kube-rbac-proxy usage
+    args:
+      - "--secure-listen-address=0.0.0.0:8443"
+      - "--upstream=http://127.0.0.1:8080/"
+      - "--logtostderr=true"
+      - "--v=0"
+    port: 8443
+    resources: {}
+
+# Health probe port (manager flag --health-probe-bind-address)
+healthProbe:
+  port: 8081
+
+# Prometheus ServiceMonitor
+serviceMonitor:
+  enabled: false
+  # Use Azure Managed Prometheus (azmonitoring.coreos.com/v1) or OSS Prometheus (monitoring.coreos.com/v1)
+  azureManaged: false
+  # Additional labels for ServiceMonitor
+  additionalLabels: {}
+  # Scrape interval
+  interval: 30s
+  # Scrape timeout
+  scrapeTimeout: 10s
+
+# Health probes
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8081
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

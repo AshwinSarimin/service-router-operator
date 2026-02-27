@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: service-router-system
+
+namePrefix: service-router-operator-
+
+resources:
+- ../../default
+- poddisruptionbudget.yaml
+
+patches:
+- path: manager_production_patch.yaml
+  target:
+    kind: Deployment
+    name: controller-manager

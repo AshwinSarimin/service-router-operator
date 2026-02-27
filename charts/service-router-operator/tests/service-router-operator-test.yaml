@@ -1,0 +1,59 @@
+suite: Service Router Operator Helm Chart
+
+# This test suite validates the rendering of the Service Router Operator Helm chart.
+
+---
+
+# Test: Default values
+it: should render a Deployment with the default image
+assert:
+  template: templates/deployment.yaml
+  contains:
+    kind: Deployment
+    spec:
+      template:
+        spec:
+          containers:
+            - name: manager
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+---
+
+# Test: Custom image values
+set:
+  image:
+    repository: myrepo/service-router
+    tag: v1.2.3
+it: should render a Deployment with a custom image
+assert:
+  template: templates/deployment.yaml
+  contains:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: manager
+              image: "myrepo/service-router:v1.2.3"
+
+---
+
+# Test: ServiceAccount creation
+it: should render a ServiceAccount by default
+assert:
+  template: templates/serviceaccount.yaml
+  contains:
+    kind: ServiceAccount
+    metadata:
+      name: "{{ include \"service-router-operator.serviceAccountName\" . }}"
+
+---
+
+# Test: RBAC resources
+it: should render ClusterRole and ClusterRoleBinding
+assert:
+  template: templates/clusterrole.yaml
+  contains:
+    kind: ClusterRole
+  template: templates/clusterrolebinding.yaml
+  contains:
+    kind: ClusterRoleBinding

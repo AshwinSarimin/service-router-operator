@@ -1,0 +1,31 @@
+{{- if .Values.metrics.enabled }}
+{{/*
+  Validation: Ensure metrics.service.port matches the correct port depending on kubeRbacProxy.enabled
+*/}}
+{{- if and .Values.metrics.kubeRbacProxy.enabled (ne .Values.metrics.service.port .Values.metrics.kubeRbacProxy.port) }}
+{{ fail "When metrics.kubeRbacProxy.enabled is true, metrics.service.port must match metrics.kubeRbacProxy.port (default 8443)" }}
+{{- end }}
+{{- if and (not .Values.metrics.kubeRbacProxy.enabled) (ne .Values.metrics.service.port .Values.metrics.port) }}
+{{ fail "When metrics.kubeRbacProxy.enabled is false, metrics.service.port must match metrics.port (default 8080)" }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "service-router-operator.fullname" . }}-metrics-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "service-router-operator.labels" . | nindent 4 }}
+  {{- with .Values.metrics.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.metrics.service.type }}
+  ports:
+  - name: {{ if .Values.metrics.kubeRbacProxy.enabled }}https{{ else }}metrics{{ end }}
+    port: {{ .Values.metrics.service.port }}
+    targetPort: {{ if .Values.metrics.kubeRbacProxy.enabled }}https{{ else }}metrics{{ end }}
+    protocol: TCP
+  selector:
+    {{- include "service-router-operator.selectorLabels" . | nindent 4 }}
+{{- end }}

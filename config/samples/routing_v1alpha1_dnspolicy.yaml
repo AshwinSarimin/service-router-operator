@@ -1,0 +1,16 @@
+apiVersion: routing.router.io/v1alpha1
+kind: DNSPolicy
+metadata:
+  labels:
+    app.kubernetes.io/name: dnspolicy
+    app.kubernetes.io/instance: dnspolicy-sample
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: service-router-operator
+  name: dnspolicy-sample
+  namespace: ns-d-dev-test-01
+spec:
+  mode: Active
+  # For RegionBound mode, specify sourceRegion to ensure policy only activates in matching cluster
+  # sourceRegion: weu
+  # sourceCluster: aks01  # Optional: further restrict to specific cluster

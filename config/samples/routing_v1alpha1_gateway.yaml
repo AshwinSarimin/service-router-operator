@@ -1,0 +1,31 @@
+apiVersion: routing.router.io/v1alpha1
+kind: Gateway
+metadata:
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/instance: gateway-sample
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: service-router-operator
+  name: gateway-sample
+  namespace: ns-d-all-addon-istio-ingress-01
+spec:
+  controller: gateway-ingress
+  credentialName: wildcard-certificate
+  targetPostfix: external
+---
+apiVersion: routing.router.io/v1alpha1
+kind: Gateway
+metadata:
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/instance: gateway-sample
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: service-router-operator
+  name: gateway-sample-2
+  namespace: ns-d-all-addon-istio-ingress-01
+spec:
+  controller: gateway-ingress
+  credentialName: wildcard-certificate
+  targetPostfix: external

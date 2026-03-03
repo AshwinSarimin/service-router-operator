@@ -1,491 +1,614 @@
-# Multi region networking
+# Introduction
 
-![multi-region](../../assets/images/docs/networking/multi-region.drawio.png)
+In this post, I walk through the Service Router Operator — a Kubernetes operator I built to automate multi-region DNS provisioning on AKS using Istio and ExternalDNS.
 
-The AKS platform operates across multiple Azure regions (North Europe and West Europe) to provide high availability, disaster recovery capabilities, and geographic proximity to users. In this multi-region architecture, a critical requirement is the ability to route traffic seamlessly between regions. When an application or service becomes unavailable in one region, whether due to maintenance, failure, or regional issues, traffic must be automatically or manually redirected to a healthy instance in another region. This cross-region routing capability is essential for:
+# Multi region DNS on AKS
 
-- **High Availability**: Ensuring services remain accessible even when a regional deployment fails
-- **Disaster Recovery**: Enabling failover scenarios during regional outages
-- **Maintenance Windows**: Redirecting traffic during planned maintenance without service disruption
-- **Geographic Optimization**: Routing users to the nearest or best-performing region
+The AKS platform can operate across multiple Azure regions (in this case West Europe and North Europe) to provide high availability, disaster recovery capabilities and geographic proximity to users.
+In this multi-region architecture, a critical requirement is the ability to route traffic seamlessy between regions. When an application or service becomes unavailable in one region, whether due to maintenance, failure, or regional issues, traffic must be automatically or manually redirected to a healthy instance in another region.
 
-Managing DNS across multiple regions presents significant operational complexity: workload teams must route traffic to the correct regional cluster, maintain DNS records across multiple Azure Private DNS zones, handle both regional isolation and cross-region failover scenarios, and prevent conflicts when multiple controllers attempt to manage the same DNS records. Traditional approaches require manual, error-prone DNS management that doesn't scale.
+Managing DNS across multiple regions presents significant operational complexity: workload teams must route traffic to the correct regional cluster, maintain DNS records across multiple Azure Private DNS zones, and handle both regional isolation and cross-region failover scenarios. **This way DNS management becomes complex and error-prone**
 
-## Service Router Operator
+# Service Router Operator
 
-To address these challenges, the [Service Router Operator](https://dev.azure.com/vecozo/Platform/_git/Aks.Operator.ServiceRouter) provides automated DNS management for multi-region deployments:
+To address these challenges, the Service Router Operator provides automated DNS management for multi-region deployments:
+- **Automates DNS Record Creation**: Automatically generates DNS records based on Custom Resources.
+- **Enables Regional Control**: Supports both Active (multi-region) and RegionBound (single-region) operational modes.
+**Prevents Conflicts**: Uses label-based filtering to ensure each region's ExternalDNS instance only manages its designated DNS records.
+**Simplifies Operations**: Workload teams simply declare their services and desired routing behavior using Helm charts.
 
-- **Automates DNS Record Creation**: Automatically generates DNS records based on Custom Resources
-- **Enables Regional Control**: Supports both Active (multi-region) and RegionBound (single-region) operational modes
-- **Prevents Conflicts**: Uses label-based filtering to ensure each region's ExternalDNS instance only manages its designated DNS records
-- **Simplifies Operations**: Workload teams simply declare their services and desired routing behavior using Helm charts
+![](assets/multi-region.drawio.png)
 
-## How it works
+Our AKS platform spans two Azure regions — North Europe and West Europe — each with its own private DNS zone. When an workload team wants to expose a service, they need DNS records in both zones. The record in the WEU zone should point to the WEU cluster's Istio ingress gateway, and the one in the NEU zone should point to the NEU gateway. Straightforward enough, until you account for:
+
+- **Active-Active services**: the service runs in both regions, each cluster manages its own DNS
+- **RegionBound services**: the service only runs in one region, but DNS records still need to exist in all zones pointing to the active cluster
+- **Failover scenarios**: if a cluster goes down, another cluster needs to take over DNS management for the failed region.
+
+## Why an Operator?
+
+If you've read my previous post on [KubeBuilder](https://teknologi.nl/posts/kubebuilder/), you'll know I'm a fan of the operator pattern for exactly this kind of problem. An operator runs a continuous reconciliation loop, watching the desired state defined in custom resources and continuously working to make reality match it. For DNS management, this is ideal:
+
+- If a DNS record is manually deleted, the operator recreates it within seconds.
+- If a Gateway's LoadBalancer IP changes, the operator updates all CNAME records automatically.
+- Workload teams define simple, declarative resources without needing to understand the DNS internals.
+- Platform teams retain control over cluster-wide infrastructure through their own set of resources.
+
+
+## How It Works
 
 The Service Router automates DNS provisioning and traffic routing for services deployed across multiple AKS clusters and regions.
 
 ### Components
 
-**Service Router Operator**
+#### Service Router Operator
 
 The operator manages the lifecycle of DNS records by continuously reconciling Custom Resource Definitions (CRDs) to ensure the desired state matches the actual state.
 
-**ExternalDNS**
+#### ExternalDNS
 
 ExternalDNS is an AKS platform component that automatically synchronizes Kubernetes networking resources (Services, Ingresses, and DNSEndpoint CRs) with DNS providers like Azure Private DNS zones. It monitors DNSEndpoint custom resources created by the Service Router Operator and provisions the corresponding DNS records.
 
-**Key Architecture**: Each AKS cluster runs multiple ExternalDNS instances, one for each regional DNS zone. This enables seamless failover when a cluster becomes unavailable, as the healthy cluster's ExternalDNS instance can take over DNS management for the failed region. 
+Key Architecture: Each AKS cluster runs multiple ExternalDNS instances, one for each regional DNS zone. This enables seamless failover when a cluster becomes unavailable, as the healthy cluster's ExternalDNS instance can take over DNS management for the failed region.
 
-**Label-Based Filtering**
+#### Label-Based Filtering
 
-The Service Router Operator uses labels to ensure region-specific ExternalDNS instances only manage their designated DNS records. When a DNSEndpoint is created with label `app: external-dns-neu`, only the NEU ExternalDNS instance processes it and creates records in the NEU Private DNS zone. This ensures:
+The Service Router Operator uses labels to ensure region-specific ExternalDNS instances only manage their designated DNS records. When a DNSEndpoint is created with label app: external-dns-neu, only the NEU ExternalDNS instance processes it and creates records in the NEU Private DNS zone. This ensures:
 
-- Prevention of DNS conflicts between regions
-- Independent region management
-- Clear ownership and responsibility
-- Support for both Active and RegionBound operational modes
-
-**Important**: The Service Router Operator does not directly create DNS records. It creates `DNSEndpoint` Custom Resources that ExternalDNS watches and uses to provision DNS records in Azure Private DNS.
+Prevention of DNS conflicts between regions
+Independent region management
+Clear ownership and responsibility
+Support for both Active and RegionBound operational modes
+Important: The Service Router Operator does not directly create DNS records. It creates DNSEndpoint Custom Resources that ExternalDNS watches and uses to provision DNS records in Azure Private DNS.
 
 By combining the Service Router Operator with ExternalDNS and Azure Private DNS, the platform achieves fully automated, conflict-free DNS management that enables seamless traffic routing between regions.
 
-### DNS Provisioning Workflow
+#### Custom Resources
 
-The operator consists of multiple controllers that continuously reconcile the defined Custom Resource Definitions (CRDs) to ensure the desired state matches the actual state. All CRDs are declared in GitOps repositories and reconciled with Flux.
+The Service Router Operator defines **five Custom Resource Definitions** across two API groups. Platform teams manage the cluster-wide infrastructure resources, and workload teams manage their own namespace-scoped resources.
 
-![service-router-components](../../assets/images/docs/networking/service-router-components.png)
-
-**Configuration Responsibilities:**
-
-1. **Platform Team** - Configures platform-level CRDs (ClusterIdentity, DNSConfiguration, Gateway)
-   - See [Custom Resource Definitions](https://dev.azure.com/vecozo/Platform/_git/Aks.Operator.ServiceRouter?path=/docs/ARCHITECTURE.md&anchor=custom-resource-definitions) for details.
-
-2. **Workload Team** - Configures workload-level CRDs:
-   - **ServiceRoute**: Links a service to a Gateway and DNS hostname
-   - **DNSPolicy**: Defines the operational mode (Active or RegionBound) for a namespace
-
-Workload teams can easily configure these CRDs using the [aks-webapp-charts](https://dev.azure.com/vecozo/Platform/_git/Aks.Platform?path=/charts/service/aks-webapp-charts) Helm chart.
-
-**Complete Workflow**:
-
-1. Workload team deploys application with ServiceRoute and DNSPolicy
-2. Service Router Operator reconciles CRDs and creates DNSEndpoint resources
-3. ExternalDNS watches DNSEndpoint resources
-4. ExternalDNS provisions CNAME records in Azure Private DNS zones
-5. DNS records point to the appropriate Istio Ingress Gateway based on the operational mode
-
-For a detailed step-by-step guide, see the [User Guide](https://dev.azure.com/vecozo/Platform/_git/Aks.Operator.ServiceRouter?path=%2Fdocs%2FUSER-GUIDE.md&version=GBmain&_a=preview).
-
-### Operational Modes
-
-The Service Router supports two operational modes that determine how DNS records are managed across regions:
-
-- **Active Mode**: Each cluster manages DNS records for its own region (Active-Active deployment)
-- **RegionBound Mode**: One cluster manages DNS records for multiple regions (Active-Passive deployment)
-
-#### Choosing the Right Mode
-
-| Requirement | Recommended Mode |
-|-------------|------------------|
-| Workload deployed in multiple regions | **Active** |
-| Low latency for regional users | **Active** |
-| Data residency or compliance requirements | **Active** |
-| Workload deployed in single region only | **RegionBound** |
-| Cost optimization (fewer deployments) | **RegionBound** |
-| Centralized data access (single database) | **RegionBound** |
-
-#### Active Mode
-
-Use **Active Mode** when your workload is deployed in multiple regions. Regional users will use local traffic routing (low latency) with regional isolation and independent failover.
-
-![Active-mode](../../assets/images/docs/networking/Mode-Active.png)
-
-- NEU cluster creates: `app1.aks.veczd.vczc.nl` → `aks01-neu-ingressgateway-internal.aks.veczd.vczc.nl`
-- WEU cluster creates: `app1.aks.veczd.vczc.nl` → `aks01-weu-ingressgateway-internal.aks.veczd.vczc.nl`
-- Each region has its own DNS record pointing to its local gateway
-
-
-#### RegionBound Mode
-
-Use **RegionBound Mode** when your workload is deployed in only one region and cross-region latency is acceptable for users in other regions.
-
-![RegionBound-mode](../../assets/images/docs/networking/Mode-Regionbound.png)
-
-- WEU ExternalDNS creates record in WEU DNS zone
-- NEU ExternalDNS creates record in NEU DNS zone
-- Both records point to WEU cluster
-- Clients in both regions route to WEU cluster, regardless of client location
-
-#### Comparison
-
-| Aspect | Active Mode | RegionBound Mode |
-|--------|-------------|------------------|
-| **DNS Scope** | Each cluster manages only its region | One cluster manages multiple regions |
-| **Controller Selection** | Only matching cluster's region | All configured regions |
-| **Traffic Pattern** | Regional (clients route locally) | Centralized (clients route cross-region) |
-| **Use Case** | Latency optimization, data sovereignty | Cost optimization, regions without clusters |
-| **Failover** | Regional (per-cluster) | Centralized (single source cluster) |
-| **Policy Activation** | Active in all clusters (by default) | Active only in `sourceRegion` cluster |
-
-### DNS Resolution Flow
-
-Regardless of operational mode, the DNS resolution flow is the same:
+![](assets/service-router-components.png)
 
 ```
-1. Client Query
-   → myapp-ns-p-prod-app1.aks.vecp.vczc.nl
-
-2. DNS Server: CNAME Lookup
-   → Returns: aks01-weu-ingressgateway-internal.aks.vecp.vczc.nl
-
-3. DNS Server: A Record Lookup
-   → Returns: 10.123.45.67 (Load Balancer IP)
-
-4. Client Connects
-   → 10.123.45.67:443 (Istio Ingress Gateway)
-
-5. Istio Routes
-   → Backend service in User Subnet
+cluster.router.io/v1alpha1   → ClusterIdentity, DNSConfiguration
+routing.router.io/v1alpha1   → Gateway, DNSPolicy, ServiceRoute
 ```
 
+**ClusterIdentity** (cluster-scoped, platform team): Defines the cluster's metadatam region, cluster name, base domain, and environment letter. This is used to construct DNS names and to determine which ExternalDNS controllers are relevant for this cluster.
 
+**DNSConfiguration** (cluster-scoped, platform team): Lists all ExternalDNS controller instances available across the platform, mapping each controller name to its region. This is the single source of truth for which ExternalDNS controllers exist.
 
+**Gateway** (namespace-scoped, platform team): Wraps an Istio ingress gateway with DNS target information. The operator creates the Istio `Gateway` resource and keeps its `hosts` list synchronized with all `ServiceRoutes` referencing it.
 
-# Service Router Operator
+**DNSPolicy** (namespace-scoped, workload team): Defines how DNS records should be propagated for services in that namespace — either in Active mode (this cluster manages its own region only) or RegionBound mode (one cluster manages DNS for multiple regions).
 
-A Kubernetes operator for managing DNS records and Istio traffic routing across multi-cluster, multi-region deployments.
+**ServiceRoute** (namespace-scoped, workload team): Links a Kubernetes service to a Gateway and triggers DNS record creation. When you create a `ServiceRoute`, the operator constructs the DNS name and creates the appropriate `DNSEndpoint` resources for ExternalDNS to pick up.
 
-## Overview
+## DNS Provisioning Flow
 
-The Service Router Operator simplifies multi-cluster, multi-region service deployments by managing DNS records and Istio Gateway configurations through Kubernetes-native custom resources.
+The operator does **not** create DNS records directly. Instead, it creates `DNSEndpoint` custom resources (from the ExternalDNS CRD API), which ExternalDNS watches and uses to provision records in Azure Private DNS.
 
-**What it does**:
-- **DNS Automation**: Automatically creates DNS records (CNAME and A records) for your services using ExternalDNS, eliminating manual DNS configuration
-- **Gateway Management**: Aggregates service hostnames into Istio Gateway resources and manages DNS targets for Gateway LoadBalancer IPs
-- **Regional Control**: Provides flexible DNS propagation strategies (Active mode for regional isolation, RegionBound mode for cross-region consolidation)
-- **Namespace Isolation**: Enables application teams to manage their own DNS policies while platform teams control cluster-wide infrastructure
+```
+Workload team creates ServiceRoute
+         │
+         ▼
+Service Router Operator reconciles
+  ├── Reads ClusterIdentity (region, domain, cluster)
+  ├── Reads DNSPolicy (mode, active controllers)
+  ├── Reads Gateway (target postfix, Istio controller)
+  └── Creates DNSEndpoint CRDs (one per active ExternalDNS controller)
+         │
+         ▼
+ExternalDNS controller watches DNSEndpoints (filtered by label)
+         │
+         ▼
+ExternalDNS provisions CNAME record in Azure Private DNS:
+  api-ns-p-prod-myapp.example.com → aks01-weu-internal.example.com
+         │
+         ▼
+A separate IngressDNS controller (part of the operator) watches
+the Gateway's LoadBalancer Service and creates an A record:
+  aks01-weu-internal.example.com → 10.123.45.67
+```
 
-**The problem it solves**:
+The two-step CNAME + A record design means that if the gateway IP ever changes (for example, after a cluster recreation), only the A record needs to update — all service CNAME records automatically follow without any changes.
 
-In multi-region Kubernetes deployments, exposing services requires coordinating:
-1. DNS records across multiple regional DNS zones (e.g., Azure Private DNS per region)
-2. Istio Gateway configurations with proper hostnames and TLS certificates
-3. Regional routing strategies (serve traffic locally vs. centralized)
-4. Team boundaries (platform vs. application team responsibilities)
+DNS names are constructed deterministically from `ServiceRoute` fields:
 
-Doing this manually or with static templates becomes error-prone, difficult to maintain, and doesn't adapt to changes automatically. This operator provides continuous reconciliation, ensuring your DNS and routing configuration always matches your desired state.
+```
+{serviceName}-ns-{envLetter}-{environment}-{application}.{domain}
+```
 
-### Key Features
+For example, a `ServiceRoute` with `serviceName: api`, `environment: prod`, `application: myapp` on a cluster with `environmentLetter: p` and `domain: example.com` produces `api-ns-p-prod-myapp.example.com`.
 
-- **Multi-Region DNS Management**: Control DNS record propagation across regional DNS zones
-- **Flexible Traffic Routing**: Active mode (regional isolation) or RegionBound mode (cross-region consolidation)
-- **ExternalDNS Integration**: Automatic DNS provisioning via DNSEndpoint CRDs
-- **Istio Gateway Automation**: Manages Istio Gateway resources with aggregated hostnames
-- **Namespace Isolation**: DNS policies scoped per namespace for multi-tenancy
-- **Declarative Configuration**: GitOps-friendly Kubernetes-native resources
-- **Self-Healing**: Continuous reconciliation ensures desired state matches actual state
+## Operational Modes
 
-### Why an Operator?
+The `DNSPolicy` controls how DNS records are spread across regions.
 
-The operator pattern provides continuous reconciliation and dynamic management that's ideal for multi-cluster DNS and routing:
+**Active Mode** — use this when your service runs in multiple regions. Each cluster manages DNS only for its own region. A client in WEU queries the WEU DNS zone and routes to the WEU cluster; a client in NEU does the same for its cluster.
 
-| Traditional Approach | Operator Pattern |
-|------------|----------|
-| Static templates | Dynamic reconciliation |
-| Manual updates | Automatic updates |
-| Complex template logic | Native Kubernetes patterns |
-| Limited multi-tenancy | Clear RBAC boundaries |
-| One-time deployment | Continuous reconciliation |
-| No status feedback | Real-time status updates |
+![](assets/Mode-Active.png)
 
-**Key advantages**:
-- **Self-Healing**: Automatically corrects configuration drift (e.g., if DNS records are manually deleted)
-- **Dependency Awareness**: Updates DNS when Gateway IP addresses change
-- **Validation**: Validates resources before applying them, catching errors early
-- **Status Reporting**: Provides clear feedback on resource state (Active, Pending, Error)
+**RegionBound Mode** — use this when your service only runs in one region but you still want DNS records in all regional zones. You specify a `sourceRegion`, and only the cluster in that region becomes active. The active cluster creates `DNSEndpoint` resources for all ExternalDNS controllers (WEU and NEU), so both zones get records pointing to the single active cluster. Clusters in other regions are automatically inactive and do not create any DNS records.
 
-**See [Architecture - Why an Operator?](docs/ARCHITECTURE.md#why-an-operator-instead-of-helm) for detailed rationale.**
+![](assets/Mode-RegionBound.png)
 
-## Quick Start
+| | Active Mode | RegionBound Mode |
+|---|---|---|
+| **DNS Scope** | Each cluster manages its own region | One cluster manages all regions |
+| **Traffic Pattern** | Regional routing (low latency) | Centralized routing (cross-region) |
+| **Best For** | High availability, data residency | Single-region services, cost optimization |
 
-### Prerequisites
+### Label-based conflict prevention
 
-- Kubernetes 1.24+
-- Istio 1.18+ (for Gateway resources)
-- ExternalDNS 0.13+ (configured with DNSEndpoint CRD source)
+To prevent ExternalDNS instances from interfering with each other, the operator sets a `router.io/region` label on every `DNSEndpoint`. Each ExternalDNS deployment is configured with `--label-filter=router.io/region=weu` (or `neu`), so it only processes records intended for it. This ensures WEU ExternalDNS only writes to the WEU DNS zone, and NEU ExternalDNS only writes to the NEU DNS zone — no conflicts, even in complex multi-cluster failover scenarios.
 
-### Installation
+# Implementation
 
-See [Installation Guide](docs/INSTALLATION.md) for detailed deployment instructions.
+The following guide walks through setting up a test environment on AKS with the Istio addon and External DNS, installing the operator, and deploying a service with automated DNS.
+
+The following steps will be necessary to test the operator:
+- [Create an AKS cluster with the Istio addon & Flux extension](#create-an-aks-cluster)
+  - The AKS Istio Service Mesh addon provides a managed Istio installation, including the ingress gateway.
+  - The AKS Flux extension provides a managed Flux v2 installation. Once enabled, you create a `FluxConfig` that points at the Git repository and individual `Kustomization` resources that sync specific subfolders.
+- [Create an Azure Container Registry](#create-acr)
+  - An Azure Container Registry is needed to store the operator image before deploying it to AKS.
+- [Create an Azure Private DNS Zone](#create-an-azure-private-dns-zone)
+- [Configure Workload Identity for ExternalDNS](#configure-workload-identity-for-externaldns)
+- [Build and push the operator image](#build-and-push-the-operator-image)
+  - The operator image will be pushed to the ACR so that it can be used by the AKS cluster as Kubernetes Operator.
+- [Configure GitOps](#configure-gitops)
+
+## Prerequisites
+
+- Azure CLI (`az`) with an active subscription
+- `kubectl` and `helm` installed
+
+## Create an AKS Cluster
+
+`--enable-asm` (Istio), `--enable-workload-identity`, and `--enable-oidc-issuer` can all be set at creation time. The Flux extension is a separate Azure resource provider and must be installed in a follow-up command.
 
 ```bash
-# Install CRDs (5 total)
-kubectl apply -f config/crd/bases
+RESOURCE_GROUP="service-router-test-rg"
+CLUSTER_NAME="aks-test"
+LOCATION="westeurope"
 
-# Install operator
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+az aks create \
+  --resource-group $RESOURCE_GROUP \
+  --name $CLUSTER_NAME \
+  --location $LOCATION \
+  --node-count 2 \
+  --node-vm-size Standard_D2s_v3 \
+  --enable-asm \
+  --enable-workload-identity \
+  --enable-oidc-issuer \
+  --generate-ssh-keys
+
+az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+
+az aks mesh enable-ingress-gateway \
+  --resource-group $RESOURCE_GROUP \
+  --name $CLUSTER_NAME \
+  --ingress-gateway-type internal
+
+az k8s-extension create \
+  --resource-group $RESOURCE_GROUP \
+  --cluster-name $CLUSTER_NAME \
+  --cluster-type managedClusters \
+  --name flux \
+  --extension-type microsoft.flux
+```
+
+Verify the Istio ingress gateway is running and has an IP address:
+
+```bash
+kubectl get svc -n aks-istio-ingress
+# NAME                                TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)
+# aks-istio-ingressgateway-internal   LoadBalancer   10.0.XXX.XXX   10.X.X.X      ...
+```
+
+## Create ACR
+
+```bash
+ACR_NAME="serviceroutertestacr"  # must be globally unique, alphanumeric only
+
+# Create the registry
+az acr create \
+  --resource-group $RESOURCE_GROUP \
+  --name $ACR_NAME \
+  --sku Basic
+
+# Attach the ACR to the AKS cluster so nodes can pull images without extra credentials
+az aks update \
+  --resource-group $RESOURCE_GROUP \
+  --name $CLUSTER_NAME \
+  --attach-acr $ACR_NAME
+```
+
+## Create an Azure Private DNS Zone
+
+```bash
+DNS_ZONE="test-aks.nl"
+
+az network private-dns zone create \
+  --resource-group $RESOURCE_GROUP \
+  --name $DNS_ZONE
+
+# Link the zone to the AKS VNet
+VNET_ID=$(az aks show \
+  --resource-group $RESOURCE_GROUP \
+  --name $CLUSTER_NAME \
+  --query networkProfile.vnetId -o tsv)
+
+az network private-dns link vnet create \
+  --resource-group $DNS_RESOURCE_GROUP \
+  --zone-name $DNS_ZONE \
+  --name aks-vnet-link \
+  --virtual-network $VNET_ID \
+  --registration-enabled false
+```
+
+## Configure Workload Identity for ExternalDNS
+
+ExternalDNS needs a managed identity with permissions to write to the DNS zone. With AKS Workload Identity this is straightforward.
+
+```bash
+# Get the AKS OIDC issuer
+OIDC_ISSUER=$(az aks show \
+  --resource-group $RESOURCE_GROUP \
+  --name $CLUSTER_NAME \
+  --query oidcIssuerProfile.issuerUrl -o tsv)
+
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+DNS_ZONE_ID="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$DNS_ZONE"
+
+# Create managed identity for ExternalDNS
+az identity create \
+  --resource-group $RESOURCE_GROUP \
+  --name "id-external-dns-weu"
+
+CLIENT_ID=$(az identity show \
+  --resource-group $RESOURCE_GROUP \
+  --name "id-external-dns-weu" \
+  --query clientId -o tsv)
+
+# Grant DNS Zone Contributor on the private DNS zone
+az role assignment create \
+  --assignee $CLIENT_ID \
+  --role "Private DNS Zone Contributor" \
+  --scope $DNS_ZONE_ID
+
+# Create federated credential for Workload Identity
+az identity federated-credential create \
+  --name external-dns-weu \
+  --identity-name id-external-dns-weu \
+  --resource-group $RESOURCE_GROUP \
+  --issuer $OIDC_ISSUER \
+  --subject "system:serviceaccount:external-dns:external-dns-weu"
+```
+
+## Build and push the operator image
+
+```bash
+az acr build \
+  --registry $ACR_NAME \
+  --image service-router-operator:latest \
+  --file Dockerfile .
+
+# Verify the image is available in the registry:
+
+az acr repository show-tags \
+  --name $ACR_NAME \
+  --repository service-router-operator \
+  --output table
+```
+
+## Configure GitOps
+
+```bash
+az k8s-configuration flux create \
+  --resource-group $RESOURCE_GROUP \
+  --cluster-name $CLUSTER_NAME \
+  --cluster-type managedClusters \
+  --name service-router \
+  --namespace flux-system \
+  --url https://github.com/AshwinSarimin/service-router-operator \
+  --branch main \
+  --kustomization name=crds \
+      path=config/crd/bases \
+      prune=true \
+      wait=true \
+  --kustomization name=operator \
+      path=config/overlays/production \
+      prune=true \
+      wait=true \
+      depends-on=crds
+```
+
+The `--kustomization` flags create two `Kustomization` resources in the `flux-system` namespace:
+
+| Name | Path | Purpose |
+|---|---|---|
+| `crds` | `config/crd/bases` | Installs the five CRDs before anything else |
+| `operator` | `config/overlays/production` | Deploys the operator with production patches; depends on `crds` |
+
+### Verify sync status
+
+```bash
+# Check the GitRepository source is ready
+kubectl get gitrepository -n flux-system service-router
+
+# Check both Kustomizations are reconciled
+kubectl get kustomization -n flux-system
+# NAME       READY   STATUS                      AGE
+# crds       True    Applied revision: main/...  1m
+# operator   True    Applied revision: main/...  1m
+```
+
+Flux reconciles every 10 minutes by default. To force an immediate sync:
+
+```bash
+az k8s-configuration flux update \
+  --resource-group $RESOURCE_GROUP \
+  --cluster-name $CLUSTER_NAME \
+  --cluster-type managedClusters \
+  --name service-router
+```
+
+## Install ExternalDNS via Helm
+
+```bash
+helm repo add external-dns https://kubernetes-sigs.github.io/external-dns/
+helm repo update
+
+kubectl create namespace external-dns
+
+# Create service account with Workload Identity annotation
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns-weu
+  namespace: external-dns
+  annotations:
+    azure.workload.identity/client-id: "$CLIENT_ID"
+EOF
+
+helm install external-dns-weu external-dns/external-dns \
+  --namespace external-dns \
+  --set provider.name=azure-private-dns \
+  --set "extraArgs[0]=--source=crd" \
+  --set "extraArgs[1]=--crd-source-apiversion=externaldns.k8s.io/v1alpha1" \
+  --set "extraArgs[2]=--crd-source-kind=DNSEndpoint" \
+  --set "extraArgs[3]=--txt-owner-id=external-dns-weu" \
+  --set "extraArgs[4]=--label-filter=router.io/region=weu" \
+  --set "extraArgs[5]=--azure-resource-group=$RESOURCE_GROUP" \
+  --set "extraArgs[6]=--azure-subscription-id=$SUBSCRIPTION_ID" \
+  --set "extraArgs[7]=--domain-filter=$DNS_ZONE" \
+  --set "extraArgs[8]=--policy=upsert-only" \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=external-dns-weu \
+  --set "podLabels.azure\\.workload\\.identity/use=true"
+```
+
+## Install the Service Router Operator and CRDs
+
+```bash
+# Clone the repository
+git clone https://github.com/AshwinSarimin/service-router-operator.git
+cd service-router-operator
+
+# Install the 5 CRDs
+kubectl apply -f config/crd/bases/
+
+# Verify CRDs are installed
+kubectl get crds | grep router.io
+# clusteridentities.cluster.router.io
+# dnsconfigurations.cluster.router.io
+# gateways.routing.router.io
+# dnspolicies.routing.router.io
+# serviceroutes.routing.router.io
+
+# Install the operator
 kubectl apply -k config/default
+
+# Verify operator is running
+kubectl get pods -n service-router-system
 ```
 
-### Basic Usage
+## Step 5: Configure the Cluster
 
-**Platform Team** - Set up cluster infrastructure:
+Platform teams configure the cluster-scoped resources. This is typically done once during cluster setup and managed with Flux or ArgoCD.
 
 ```bash
-# 1. Create ClusterIdentity
-kubectl apply -f config/samples/cluster_v1alpha1_clusteridentity.yaml
+# 1. ClusterIdentity - tells the operator about this cluster
+kubectl apply -f - <<EOF
+apiVersion: cluster.router.io/v1alpha1
+kind: ClusterIdentity
+metadata:
+  name: cluster-identity
+spec:
+  region: weu
+  cluster: aks01
+  domain: example-test.private
+  environmentLetter: p
+EOF
 
-# 2. Create DNSConfiguration
-kubectl apply -f config/samples/cluster_v1alpha1_dnsconfiguration.yaml
+# 2. DNSConfiguration - defines which ExternalDNS controllers exist
+kubectl apply -f - <<EOF
+apiVersion: cluster.router.io/v1alpha1
+kind: DNSConfiguration
+metadata:
+  name: dns-config
+spec:
+  externalDNSControllers:
+    - name: external-dns-weu
+      region: weu
+EOF
 
-# 3. Create Gateway
-kubectl apply -f config/samples/routing_v1alpha1_gateway.yaml
+# 3. Gateway - wraps the AKS Istio ingress gateway
+kubectl apply -f - <<EOF
+apiVersion: routing.router.io/v1alpha1
+kind: Gateway
+metadata:
+  name: default-gateway
+  namespace: aks-istio-ingress
+spec:
+  controller: aks-istio-ingressgateway-external
+  credentialName: ""     # omit for test (no TLS)
+  targetPostfix: external
+EOF
 ```
 
-**Application Team** - Deploy your service:
+## Step 6: Deploy a Service with Automated DNS
+
+workload teams create two resources in their namespace: a `DNSPolicy` and a `ServiceRoute`. Here I'll use a simple echo server to test the end-to-end flow.
 
 ```bash
-# 4. Create DNSPolicy (per namespace)
-kubectl apply -f config/samples/routing_v1alpha1_dnspolicy.yaml
+kubectl create namespace myapp
 
-# 5. Create ServiceRoute (per service)
-kubectl apply -f config/samples/routing_v1alpha1_serviceroute.yaml
+# Deploy a test application
+kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo
+  namespace: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo
+  template:
+    metadata:
+      labels:
+        app: echo
+    spec:
+      containers:
+        - name: echo
+          image: ealen/echo-server:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo
+  namespace: myapp
+spec:
+  selector:
+    app: echo
+  ports:
+    - port: 80
+      targetPort: 80
+EOF
 
-# 6. Create VirtualService (route traffic - operator does NOT create this)
-kubectl apply -f your-virtualservice.yaml
+# DNSPolicy - Active mode: this cluster manages DNS for its own region
+kubectl apply -f - <<EOF
+apiVersion: routing.router.io/v1alpha1
+kind: DNSPolicy
+metadata:
+  name: myapp-dns
+  namespace: myapp
+spec:
+  mode: Active
+EOF
+
+# ServiceRoute - links the echo service to the gateway
+kubectl apply -f - <<EOF
+apiVersion: routing.router.io/v1alpha1
+kind: ServiceRoute
+metadata:
+  name: echo-route
+  namespace: myapp
+spec:
+  serviceName: echo
+  gatewayName: default-gateway
+  gatewayNamespace: aks-istio-ingress
+  environment: test
+  application: myapp
+EOF
+
+# VirtualService - route traffic from the gateway to the service
+# Note: the operator adds the hostname to the Gateway, but you create the VirtualService
+kubectl apply -f - <<EOF
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: echo-route
+  namespace: myapp
+spec:
+  hosts:
+    - echo-ns-p-test-myapp.example-test.private
+  gateways:
+    - aks-istio-ingress/default-gateway
+  http:
+    - route:
+        - destination:
+            host: echo.myapp.svc.cluster.local
+            port:
+              number: 80
+EOF
 ```
 
-**Result**: Your service DNS is provisioned and traffic routes correctly.
+## Step 7: Verify
 
-📘 **See [User Guide](docs/USER-GUIDE.md) for complete examples and detailed walkthrough.**
+```bash
+# Check ServiceRoute status
+kubectl get serviceroute -n myapp echo-route -o yaml | grep -A 10 status
 
-## Documentation
+# Check that the operator created DNSEndpoint resources
+kubectl get dnsendpoints -n myapp
+# NAME                                  AGE
+# echo-route-external-dns-weu           30s
 
-### For Platform Engineers
+# Check what the DNSEndpoint contains
+kubectl get dnsendpoint -n myapp echo-route-external-dns-weu -o yaml
 
-| Document | Description |
-|----------|-------------|
-| [**Architecture**](docs/ARCHITECTURE.md) | System design, CRD relationships, DNS flow, multi-region behavior |
-| [**ExternalDNS Integration**](docs/EXTERNALDNS-INTEGRATION.md) | DNS provisioning, owner IDs, cross-cluster takeover |
-| [**Operator Guide**](docs/OPERATOR-GUIDE.md) | Running and operating the controller, monitoring, troubleshooting |
-| [**Installation**](docs/INSTALLATION.md) | Deployment procedures for homelab and AKS |
-| [**Migration Guide**](docs/MIGRATION.md) | Migrating from Helm chart to operator |
+# Check ExternalDNS picked it up
+kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=20
+# time="..." level=info msg="Desired change: CREATE echo-ns-p-test-myapp.example-test.private CNAME"
 
-### For Application Teams
-
-| Document | Description |
-|----------|-------------|
-| [**User Guide**](docs/USER-GUIDE.md) | Using Gateway, DNSPolicy, and ServiceRoute CRDs |
-| [**Architecture**](docs/ARCHITECTURE.md) | Understanding how the system works |
-
-### For Contributors
-
-| Document | Description |
-|----------|-------------|
-| [**Development Guide**](docs/DEVELOPMENT.md) | Contributing, development setup, testing |
-
-## Custom Resources
-
-The operator defines **5 CRDs across 2 API groups** with clear separation of concerns:
-
-| CRD | API Group | Scope | Managed By |
-|-----|-----------|-------|------------|
-| **ClusterIdentity** | cluster.router.io/v1alpha1 | Cluster | Platform Team |
-| **DNSConfiguration** | cluster.router.io/v1alpha1 | Cluster | Platform Team |
-| **Gateway** | routing.router.io/v1alpha1 | Namespace | Platform Team |
-| **DNSPolicy** | routing.router.io/v1alpha1 | Namespace | Application Team |
-| **ServiceRoute** | routing.router.io/v1alpha1 | Namespace | Application Team |
-
-### What the Operator Manages
-
-✅ **Automatically Created**:
-- **DNSEndpoint CRDs**: CNAME and A records for ExternalDNS
-- **Istio Gateway resources**: With aggregated hostnames from ServiceRoutes
-
-❌ **NOT Created** (user responsibility):
-- **Istio VirtualService resources**: Users must create these to route traffic
-
-### ClusterIdentity (Cluster-scoped)
-
-Defines cluster metadata (region, cluster name, domain, environment) used for DNS record construction.
-
-**Managed by**: Platform team | **Scope**: One per cluster
-
-### DNSConfiguration (Cluster-scoped)
-
-Defines available ExternalDNS controllers across the infrastructure, mapping controller names to regions.
-
-**Managed by**: Platform team | **Scope**: One per cluster (singleton)
-
-### Gateway (Namespace-scoped)
-
-Wraps Istio Gateway configuration with DNS target information. The operator creates the Istio Gateway resource and aggregates hostnames from ServiceRoutes.
-
-**Managed by**: Platform team | **Scope**: Typically in `istio-system`, shared across namespaces
-
-### DNSPolicy (Namespace-scoped)
-
-Defines DNS propagation strategy (Active or RegionBound mode) and determines which ExternalDNS controllers are active for services in the namespace.
-
-**Managed by**: Application team | **Scope**: One per namespace (typically)
-
-**Modes**:
-- **Active**: Each cluster manages its own regional DNS
-- **RegionBound**: One cluster manages DNS for multiple regions
-
-### ServiceRoute (Namespace-scoped)
-
-Links a Kubernetes service to a Gateway and triggers DNS record creation. Constructs DNS name from service, environment, and application fields.
-
-**Managed by**: Application team | **Scope**: One per service
-
-📘 **For complete CRD specifications and examples, see [Architecture](docs/ARCHITECTURE.md#custom-resource-definitions).**
-
-## Architecture
-
-### CRD Relationships
-
-```
-ClusterIdentity (cluster-wide)
-    │
-    │ provides: region, cluster, domain
-    │
-    ├──► Gateway (reusable)
-    │       │
-    │       └──► Istio Gateway (generated)
-    │
-DNSConfiguration (cluster-wide)
-    │
-    │ defines: externalDNSControllers
-    │
-    └──► DNSPolicy (per namespace)
-            │
-            │ determines: active controllers
-            │
-            └──► ServiceRoute (per service)
-                    │
-                    └──► DNSEndpoint CRDs (generated)
-                            │
-                            └──► DNS Records (via ExternalDNS)
-
-Note: Istio Gateway is updated with hostnames from ServiceRoutes.
-      Users must create VirtualService resources to route traffic.
+# Verify DNS record in Azure
+az network private-dns record-set cname show \
+  --resource-group $DNS_RESOURCE_GROUP \
+  --zone-name $DNS_ZONE \
+  --name echo-ns-p-test-myapp
 ```
 
-### Network Flow
+Within about a minute, you should see the CNAME record in Azure Private DNS pointing to the Istio ingress gateway hostname, and the A record for the gateway hostname pointing to the LoadBalancer IP. Traffic from within the VNet to `echo-ns-p-test-myapp.example-test.private` will now route through Istio to the echo service.
 
-```
-Client Query: api-ns-p-prod-myapp.example.com
-    ↓
-DNS: CNAME → aks01-weu-internal.example.com (created by operator)
-    ↓
-DNS: A record → 10.123.45.67 (created by operator via IngressDNS Controller)
-    ↓
-Load Balancer → Istio Gateway Pod
-    ↓
-Istio VirtualService (user-created, routes to service)
-    ↓
-Kubernetes Service → Backend Pod
-```
+---
 
-📘 **For complete DNS flow and multi-region behavior, see [Architecture](docs/ARCHITECTURE.md#dns-and-network-flow).**
+# What I learned building this
 
-## Project Structure
+Building the Service Router Operator reinforced a few things about the operator pattern in practice.
 
-```
-.
-├── api/                              # CRD type definitions
-│   ├── cluster/v1alpha1/             # ClusterIdentity, DNSConfiguration
-│   └── routing/v1alpha1/             # Gateway, DNSPolicy, ServiceRoute
-├── cmd/
-│   └── main.go                       # Application entry point
-├── config/                           # Kubernetes manifests
-│   ├── crd/bases/                    # Generated CRD YAML
-│   ├── rbac/                         # RBAC configuration
-│   ├── manager/                      # Operator deployment
-│   └── samples/                      # Example custom resources
-├── internal/
-│   ├── controller/                   # Reconciliation logic
-│   │   ├── cluster/                  # ClusterIdentity controller
-│   │   └── routing/                  # DNSPolicy, Gateway, ServiceRoute
-│   └── clusteridentity/              # In-memory cache
-├── charts/service-router-operator/   # Helm chart for deployment
-└── docs/                             # Documentation
-    ├── ARCHITECTURE.md
-    ├── EXTERNALDNS-INTEGRATION.md
-    ├── OPERATOR-GUIDE.md
-    ├── USER-GUIDE.md
-    ├── MIGRATION.md
-    ├── INSTALLATION.md
-    └── DEVELOPMENT.md
-```
+**Self-healing is the killer feature.** We've had situations where DNS records were accidentally deleted from Azure Private DNS — with the operator, they were recreated within 60 seconds without any manual intervention. With the Helm approach, someone would need to manually run `helm upgrade` to restore them.
 
-## Use Cases
+**CRD design matters a lot.** The split between cluster-scoped CRDs (ClusterIdentity, DNSConfiguration) and namespace-scoped CRDs (Gateway, DNSPolicy, ServiceRoute) reflects the real team boundaries on our platform. Platform engineers manage the cluster-wide infrastructure; workload teams manage their own namespaces. The RBAC model follows naturally from this design.
 
-### Regional Service (Active Mode)
+**ExternalDNS ownership model is powerful but subtle.** The `--txt-owner-id` pattern is what enables seamless cross-cluster DNS takeover within the same region. Two clusters in the same region share the same owner ID for their ExternalDNS instances, which means either cluster can take over DNS management from the other without conflicts.
 
-Each cluster manages DNS for its own region. Clients route to nearest cluster.
+# Repository and Documentation
 
-**Best For**:
-- Latency-optimized routing
-- Data sovereignty requirements
-- Independent regional deployments
+The operator is open source and available on GitHub. The repository includes Helm charts for deployment, sample CRDs, and documentation:
 
-### Centralized Service (RegionBound Mode)
-
-One cluster manages DNS for multiple regions. All clients route to central cluster.
-
-**Best For**:
-- Services in regions without clusters
-- Cost optimization (fewer clusters)
-- Centralized services (admin tools, databases)
-
-### Multi-Gateway Routing
-
-Different services use different gateways (internal, external).
-
-**Best For**:
-- Separating internal and public services
-- Different TLS certificates per gateway type
-- Security boundary enforcement
-
-## Multi-Tenancy
-
-Clear ownership boundaries enable multi-tenancy:
-
-| Resource | Managed By | Scope |
-|----------|------------|-------|
-| ClusterIdentity | Platform Team | Cluster |
-| DNSConfiguration | Platform Team | Cluster |
-| Gateway | Platform Team | Shared (cross-namespace) |
-| DNSPolicy | Application Team | Namespace |
-| ServiceRoute | Application Team | Namespace |
-
-**RBAC Support**: Platform and application teams have different permissions.
+- [GitHub Repository](https://github.com/AshwinSarimin/service-router-operator)
+- [Architecture](docs/ARCHITECTURE.md) — CRD relationships, DNS flow, multi-region behavior
+- [User Guide](docs/USER-GUIDE.md) — Using ServiceRoute, DNSPolicy, and Gateway CRDs  
+- [ExternalDNS Integration](docs/EXTERNALDNS-INTEGRATION.md) — Ownership model, cross-cluster takeover
+- [Installation](docs/INSTALLATION.md) — Deployment on AKS and local development
 
 ## Requirements
 
-- **Kubernetes**: 1.24+
-- **Istio**: 1.18+ (operator creates Gateway; users create VirtualService)
-- **ExternalDNS**: 0.13+ (configured with `--source=crd`)
-- **DNS Provider**: Azure Private DNS, AWS Route53, Google Cloud DNS, etc.
-
-📘 **See [Installation Guide](docs/INSTALLATION.md) for complete prerequisites and setup.**
-
-## Contributing
-
-We welcome contributions! Please see our [Development Guide](docs/DEVELOPMENT.md).
-
-This project follows:
-- [Kubebuilder](https://book.kubebuilder.io/) best practices
-- Go coding standards
-- Kubernetes controller patterns
+- Kubernetes 1.24+
+- Istio 1.18+ (or AKS Istio Service Mesh addon)
+- ExternalDNS 0.13+ (configured with `--source=crd`)
+- Azure Private DNS (or other supported provider)
 
 ## License
 
 Apache License 2.0
-
-## Support
-
-- **Documentation**: Start with [User Guide](docs/USER-GUIDE.md) or [Architecture](docs/ARCHITECTURE.md)
-- **Issues**: [GitHub Issues](https://github.com/your-org/service-router-operator/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/service-router-operator/discussions)

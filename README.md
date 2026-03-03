@@ -145,7 +145,7 @@ To prevent ExternalDNS instances from interfering with each other, the operator 
 
 # Implementation
 
-The following guide walks through setting up a test environment on AKS with the Istio addon and External DNS, installing the operator, and deploying a service with automated DNS.
+The following guide walks through setting up a test environment on AKS with the Istio addon and External DNS, installing the operator, and deploying a service with automated DNS. Flux GitOps handles all cluster and workload configuration.
 
 The following steps will be necessary to test the operator:
 - [Create an AKS cluster with the Istio addon & Flux extension](#create-an-aks-cluster)
@@ -155,9 +155,11 @@ The following steps will be necessary to test the operator:
   - An Azure Container Registry is needed to store the operator image before deploying it to AKS.
 - [Create an Azure Private DNS Zone](#create-an-azure-private-dns-zone)
 - [Configure Workload Identity for ExternalDNS](#configure-workload-identity-for-externaldns)
+  - ExternalDNS needs a managed identity with permissions to write to the DNS zone. This will be configured using AKS Workload Identity.
 - [Build and push the operator image](#build-and-push-the-operator-image)
   - The operator image will be pushed to the ACR so that it can be used by the AKS cluster as Kubernetes Operator.
 - [Configure GitOps](#configure-gitops)
+   - This will configure the GitOps sync settings for the GitOps configurations in the [gitops](./gitops/) folder.
 
 ## Prerequisites
 
@@ -252,8 +254,6 @@ az network private-dns link vnet create \
 
 ## Configure Workload Identity for ExternalDNS
 
-ExternalDNS needs a managed identity with permissions to write to the DNS zone. With AKS Workload Identity this is straightforward.
-
 ```bash
 # Get the AKS OIDC issuer
 OIDC_ISSUER=$(az aks show \
@@ -307,6 +307,15 @@ az acr repository show-tags \
 
 ## Configure GitOps
 
+The Flux confuguration will be created to sync the Kustomization files in the GitOps folder.
+
+The `--kustomization` flags create two `Kustomization` resources in the `flux-system` namespace:
+
+| Name | Path | Purpose |
+|---|---|---|
+| `crds` | `config/crd/bases` | Installs the five CRDs before anything else |
+| `operator` | `config/overlays/production` | Deploys the operator with production patches; depends on `crds` |
+
 ```bash
 az k8s-configuration flux create \
   --resource-group $RESOURCE_GROUP \
@@ -327,12 +336,7 @@ az k8s-configuration flux create \
       depends-on=crds
 ```
 
-The `--kustomization` flags create two `Kustomization` resources in the `flux-system` namespace:
 
-| Name | Path | Purpose |
-|---|---|---|
-| `crds` | `config/crd/bases` | Installs the five CRDs before anything else |
-| `operator` | `config/overlays/production` | Deploys the operator with production patches; depends on `crds` |
 
 ### Verify sync status
 
@@ -418,7 +422,7 @@ kubectl apply -k config/default
 kubectl get pods -n service-router-system
 ```
 
-## Step 5: Configure the Cluster
+## Configure the Cluster
 
 Platform teams configure the cluster-scoped resources. This is typically done once during cluster setup and managed with Flux or ArgoCD.
 
@@ -462,7 +466,7 @@ spec:
 EOF
 ```
 
-## Step 6: Deploy a Service with Automated DNS
+## Deploy a Service with Automated DNS
 
 workload teams create two resources in their namespace: a `DNSPolicy` and a `ServiceRoute`. Here I'll use a simple echo server to test the end-to-end flow.
 
@@ -553,7 +557,7 @@ spec:
 EOF
 ```
 
-## Step 7: Verify
+## Verify
 
 ```bash
 # Check ServiceRoute status

@@ -8,22 +8,22 @@ metadata:
 data:
   # Region identifier
   DNS_REGION: "weu"
-  
+
   # Environment configuration
   ENV_LETTER: "p"  # p=prod, d=dev, t=test
   CLUSTER: "aks01"
   TENANT: "myorg"
-  
+
   # Chart and image versions
   CHART_VERSION: "1.14.x"
   IMAGE_TAG: "v0.14.0"
-  
+
   # Azure Workload Identity configuration
   # TODO: Replace with actual values from your environment
   MANAGED_IDENTITY_CLIENT_ID: "00000000-0000-0000-0000-000000000000"
   TENANT_ID: "00000000-0000-0000-0000-000000000000"
   GLOBAL_SUBSCRIPTION_ID: "00000000-0000-0000-0000-000000000000"
-  
+
   # Azure Private DNS zone resource group
   GLOBAL_PRIVATEDNS_RG: "rg-private-dns"
 

@@ -3,6 +3,7 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: external-dns-weu
+  namespace: flux-system
 spec:
   #dependsOn:
   #  - name: namespaces
@@ -15,14 +16,12 @@ spec:
     kind: GitRepository
     name: cluster-config
   path: ./gitops/infrastructure/controllers/external-dns
-  #postBuild:
-  #  substituteFrom:
-  #    - kind: ConfigMap
-  #      name: external-dns-base
-  #    - kind: ConfigMap
-  #      name: external-dns-weu
-  #    - kind: ConfigMap
-  #      name: config-cluster
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: external-dns-weu
+      #- kind: ConfigMap
+      #  name: config-cluster
 #---
 #apiVersion: kustomize.toolkit.fluxcd.io/v1
 #kind: Kustomization

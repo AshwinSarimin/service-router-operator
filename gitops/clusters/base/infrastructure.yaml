@@ -3,16 +3,16 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: namespaces
+  namespace: flux-system
 spec:
   interval: 10m0s
   retryInterval: 1m0s
-  timeout: 5m
-  path: ./gitops/infrastructure/configs/namespaces
   prune: true
   wait: true
   sourceRef:
     kind: GitRepository
     name: cluster-config
+  path: ./gitops/infrastructure/configs/namespaces
 #  postBuild:
 #    substituteFrom:
 #      - kind: ConfigMap
@@ -35,12 +35,12 @@ spec:
     kind: GitRepository
     name: cluster-config
   path: ./gitops/infrastructure/controllers/external-dns
-  postBuild:
-    substituteFrom:
-      - kind: ConfigMap
-        name: external-dns-weu
-      #- kind: ConfigMap
-      #  name: config-cluster
+  #postBuild:
+  #  substituteFrom:
+  #    - kind: ConfigMap
+  #      name: external-dns-weu
+  #    - kind: ConfigMap
+  #      name: config-cluster
 #---
 #apiVersion: kustomize.toolkit.fluxcd.io/v1
 #kind: Kustomization

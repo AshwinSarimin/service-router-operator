@@ -164,6 +164,9 @@ The following steps will be necessary to test the operator:
 ## Prerequisites
 
 - Azure CLI (`az`) with an active subscription
+  - The following az extensions:
+    - `az extension add -n k8s-configuration`
+    - `az extension add -n k8s-extension`
 - `kubectl` and `helm` installed
 
 ## Create an AKS Cluster
@@ -188,13 +191,13 @@ az aks create \
   --enable-oidc-issuer \
   --generate-ssh-keys
 
-az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
-
+# Enable the Istio Ingress gateway
 az aks mesh enable-ingress-gateway \
   --resource-group $RESOURCE_GROUP \
   --name $CLUSTER_NAME \
   --ingress-gateway-type internal
 
+# Install the Flux extension
 az k8s-extension create \
   --resource-group $RESOURCE_GROUP \
   --cluster-name $CLUSTER_NAME \
@@ -206,6 +209,8 @@ az k8s-extension create \
 Verify the Istio ingress gateway is running and has an IP address:
 
 ```bash
+az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+
 kubectl get svc -n aks-istio-ingress
 # NAME                                TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)
 # aks-istio-ingressgateway-internal   LoadBalancer   10.0.XXX.XXX   10.X.X.X      ...
@@ -214,7 +219,7 @@ kubectl get svc -n aks-istio-ingress
 ## Create ACR
 
 ```bash
-ACR_NAME="serviceroutertestacr"  # must be globally unique, alphanumeric only
+ACR_NAME="serviceroutertestacr"
 
 # Create the registry
 az acr create \
@@ -222,7 +227,7 @@ az acr create \
   --name $ACR_NAME \
   --sku Basic
 
-# Attach the ACR to the AKS cluster so nodes can pull images without extra credentials
+# Attach the ACR to the AKS cluster
 az aks update \
   --resource-group $RESOURCE_GROUP \
   --name $CLUSTER_NAME \
@@ -239,13 +244,17 @@ az network private-dns zone create \
   --name $DNS_ZONE
 
 # Link the zone to the AKS VNet
-VNET_ID=$(az aks show \
+NODE_RESOURCE_GROUP=$(az aks show \
   --resource-group $RESOURCE_GROUP \
   --name $CLUSTER_NAME \
-  --query networkProfile.vnetId -o tsv)
+  --query "nodeResourceGroup" -o tsv)
+
+VNET_ID=$(az network vnet list \
+  --resource-group $NODE_RESOURCE_GROUP \
+  --query "[].id" -o tsv)
 
 az network private-dns link vnet create \
-  --resource-group $DNS_RESOURCE_GROUP \
+  --resource-group $RESOURCE_GROUP \
   --zone-name $DNS_ZONE \
   --name aks-vnet-link \
   --virtual-network $VNET_ID \
@@ -298,7 +307,6 @@ az acr build \
   --file Dockerfile .
 
 # Verify the image is available in the registry:
-
 az acr repository show-tags \
   --name $ACR_NAME \
   --repository service-router-operator \
@@ -306,6 +314,38 @@ az acr repository show-tags \
 ```
 
 ## Configure GitOps
+
+```bash
+az k8s-configuration flux create \
+  --cluster-name $CLUSTER_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --cluster-type managedClusters \
+  --name cluster-config \
+  --namespace flux-system \
+  --scope cluster \
+  --url https://github.com/AshwinSarimin/service-router-operator \
+  --branch feature/documentation \
+  --kustomization name=clusters path=./gitops/clusters/base prune=true \
+  --kustomization name=workloads path=./gitops/workloads prune=true depends_on=["clusters"]
+```
+
+```bash
+az k8s-configuration flux create \
+  --resource-group $RESOURCE_GROUP \
+  --cluster-name $CLUSTER_NAME \
+  --cluster-type managedClusters \
+  --name cluster \
+  --namespace flux-system \
+  --url https://github.com/AshwinSarimin/service-router-operator \
+  --branch feature/documentation \
+  --kustomization name=cluster \
+      path=gitops/clusters/base \
+      prune=true \
+      wait=true
+```
+
+
+
 
 The Flux confuguration will be created to sync the Kustomization files in the GitOps folder.
 
@@ -316,25 +356,6 @@ The `--kustomization` flags create two `Kustomization` resources in the `flux-sy
 | `crds` | `config/crd/bases` | Installs the five CRDs before anything else |
 | `operator` | `config/overlays/production` | Deploys the operator with production patches; depends on `crds` |
 
-```bash
-az k8s-configuration flux create \
-  --resource-group $RESOURCE_GROUP \
-  --cluster-name $CLUSTER_NAME \
-  --cluster-type managedClusters \
-  --name service-router \
-  --namespace flux-system \
-  --url https://github.com/AshwinSarimin/service-router-operator \
-  --branch main \
-  --kustomization name=crds \
-      path=config/crd/bases \
-      prune=true \
-      wait=true \
-  --kustomization name=operator \
-      path=config/overlays/production \
-      prune=true \
-      wait=true \
-      depends-on=crds
-```
 
 
 

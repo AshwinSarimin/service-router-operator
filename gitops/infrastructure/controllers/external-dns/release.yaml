@@ -1,0 +1,57 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-dns-
+spec:
+  targetNamespace: ns-${ENV_LETTER}-all-addon-external-dns-01
+  chartRef:
+    kind: OCIRepository
+    name: external-dns
+  interval: 10m
+  timeout: 5m
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: -1
+  values:
+    image:
+      repository: "${TENANT}spfmcontainerregistry.azurecr.io/images/external-dns"
+      tag: "${IMAGE_TAG}"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 50m
+        memory: 150Mi
+      limits:
+        cpu: 100m
+        memory: 150Mi
+    rbac:
+      create: true
+    serviceAccount:
+      automountServiceAccountToken: false
+    tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+    domainFilters: ["aks.${TENANT}${ENV_LETTER}.vczc.nl"]
+    logLevel: info
+    sources:
+    - "crd"
+    extraArgs:
+    - "--crd-source-apiversion=externaldns.k8s.io/v1alpha1"
+    - "--crd-source-kind=DNSEndpoint"
+    - "--managed-record-types=CNAME"
+    - "--managed-record-types=A"
+    - "--managed-record-types=TXT"
+    podLabels:
+      azure.workload.identity/use: "true"
+    provider: azure-private-dns
+    secretConfiguration:
+      enabled: true
+      mountPath: "/etc/kubernetes/"
+  valuesFrom:
+    - kind: ConfigMap
+      name: external-dns-values-

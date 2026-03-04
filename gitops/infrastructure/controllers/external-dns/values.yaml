@@ -1,0 +1,17 @@
+fullnameOverride: "external-dns-${DNS_REGION}"
+txtPrefix: "${DNS_REGION}-${ENV_LETTER}-${CLUSTER}-"
+txtOwnerId: "external-dns-${DNS_REGION}"
+labelFilter: router.io/region in (${DNS_REGION})
+serviceAccount:
+  name: "external-dns-${DNS_REGION}"
+  annotations:
+    azure.workload.identity/client-id: ${MANAGED_IDENTITY_CLIENT_ID}
+secretConfiguration:
+  data:
+    azure.json: |
+      {
+        "tenantId": "${TENANT_ID}",
+        "subscriptionId": "${GLOBAL_SUBSCRIPTION_ID}",
+        "resourceGroup": "${GLOBAL_PRIVATEDNS_RG}",
+        "useWorkloadIdentityExtension": true
+      }

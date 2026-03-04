@@ -1,0 +1,13 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: external-dns
+spec:
+  interval: 10m
+  provider: azure
+  layerSelector:
+    mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+    operation: copy
+  url: oci://${TENANT}spfmcontainerregistry.azurecr.io/helm/charts/public/external-dns
+  ref:
+    semver: ${CHART_VERSION}

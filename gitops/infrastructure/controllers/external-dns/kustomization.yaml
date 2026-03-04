@@ -1,29 +1,24 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# External DNS Helm release for managing Azure Private DNS records
-# This kustomization deploys a region-specific ExternalDNS instance
-# that watches DNSEndpoint CRDs and provisions DNS records accordingly
-
 resources:
-  - repository.yaml
   - release.yaml
 
-configMapGenerator:
-  - name: external-dns-values
-    files:
-      - values.yaml
-    options:
-      disableNameSuffixHash: false
-
-# Apply region suffix to resources (e.g., weu, neu)
-nameSuffix: -${DNS_REGION}
-
-# Target namespace for Flux configuration resources
-namespace: ns-${ENV_LETTER}-all-addon-flux-cluster-config-01
-
-configurations:
-  - ./kustomizeconfig.yaml
-
-# Validate that required variables are set
-# DNS_REGION, ENV_LETTER must be provided via postBuild substitutions
+#configMapGenerator:
+#  - name: external-dns-values
+#    files:
+#      - values.yaml
+#    options:
+#      disableNameSuffixHash: false
+#
+## Apply region suffix to resources (e.g., weu, neu)
+#nameSuffix: -${DNS_REGION}
+#
+## Target namespace for Flux configuration resources
+#namespace: ns-${ENV_LETTER}-all-addon-flux-cluster-config-01
+#
+#configurations:
+#  - ./kustomizeconfig.yaml
+#
+## Validate that required variables are set
+## DNS_REGION, ENV_LETTER must be provided via postBuild substitutions

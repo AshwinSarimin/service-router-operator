@@ -298,6 +298,33 @@ az identity federated-credential create \
   --subject "system:serviceaccount:external-dns:external-dns-weu"
 ```
 
+## Build and push the operator helm chart
+
+```bash
+# Set chart version (update as needed)
+CHART_VERSION="0.1.0"
+
+# Authenticate Helm with ACR 
+helm registry login  serviceroutertestacr.azurecr.io --username serviceroutertestacr --password DJHrNKESmzb0inmCqxsJP7ak1LNZmqLVdF1BwQQx4W0Usi5Z5ZdEJQQJ99CCAC5RqLJEqg7NAAACAZCRO9f8
+
+# Package the Helm chart from the charts directory
+helm package charts/service-router-operator \
+  --version $CHART_VERSION \
+  --app-version $CHART_VERSION
+
+# Push the chart to ACR
+helm push service-router-operator-${CHART_VERSION}.tgz \
+  oci://${ACR_NAME}.azurecr.io/helm
+
+# Verify the chart was pushed
+az acr repository show \
+  --name $ACR_NAME \
+  --repository helm/service-router-operator
+
+# Clean up the local package
+rm service-router-operator-${CHART_VERSION}.tgz
+```
+
 ## Build and push the operator image
 
 ```bash
@@ -329,22 +356,8 @@ az k8s-configuration flux create \
   --kustomization name=workloads path=./gitops/workloads prune=true depends_on=["clusters"]
 ```
 
-```bash
-az k8s-configuration flux create \
-  --resource-group $RESOURCE_GROUP \
-  --cluster-name $CLUSTER_NAME \
-  --cluster-type managedClusters \
-  --name cluster \
-  --namespace flux-system \
-  --url https://github.com/AshwinSarimin/service-router-operator \
-  --branch feature/documentation \
-  --kustomization name=cluster \
-      path=gitops/clusters/base \
-      prune=true \
-      wait=true
-```
 
-
+###########################################################
 
 
 The Flux confuguration will be created to sync the Kustomization files in the GitOps folder.

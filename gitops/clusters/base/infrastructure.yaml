@@ -209,29 +209,30 @@ spec:
 #    substituteFrom:
 #      - kind: ConfigMap
 #        name: config-cluster
-#---
-#apiVersion: kustomize.toolkit.fluxcd.io/v1
-#kind: Kustomization
-#metadata:
-#  name: service-router
-#spec:
-#  dependsOn:
-#    - name: namespaces
-#  interval: 10m0s
-#  retryInterval: 1m0s
-#  prune: true
-#  wait: false
-#  sourceRef:
-#    kind: Bucket
-#    name: cluster
-#  path: ./infrastructure/controllers/service-router
-#  postBuild:
-#    substituteFrom:
-#      - kind: ConfigMap
-#        name: config-cluster
-#      - kind: ConfigMap
-#        name: service-router
-#---
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: service-router
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: namespaces
+  interval: 10m0s
+  retryInterval: 1m0s
+  prune: true
+  wait: false
+  sourceRef:
+    kind: GitRepository
+    name: cluster-config
+  path: ./gitops/infrastructure/controllers/service-router
+  #postBuild:
+  #  substituteFrom:
+  #    - kind: ConfigMap
+  #      name: config-cluster
+  #    - kind: ConfigMap
+  #      name: service-router
+---
 #apiVersion: kustomize.toolkit.fluxcd.io/v1
 #kind: Kustomization
 #metadata:

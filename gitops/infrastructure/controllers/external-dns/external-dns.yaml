@@ -2,6 +2,7 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: external-dns-charts
+  namespace: flux-system
 spec:
   interval: 1h0m0s
   url: https://kubernetes-sigs.github.io/external-dns
@@ -10,11 +11,12 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: external-dns
-  namespace: ns-external-dns
+  namespace: flux-system
 spec:
   interval: 10m0s
   timeout: 5m0s
   releaseName: external-dns
+  targetNamespace: ns-external-dns
   chart:
     spec:
       version: "1.19.0"

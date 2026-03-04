@@ -2,11 +2,30 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: namespaces
+spec:
+  interval: 10m0s
+  retryInterval: 1m0s
+  timeout: 5m
+  path: ./gitops/infrastructure/configs/namespaces
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: cluster-config
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: config-cluster
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: external-dns-weu
   namespace: flux-system
 spec:
-  #dependsOn:
-  #  - name: namespaces
+  dependsOn:
+    - name: namespaces
   #  - name: istio-ingress-config
   interval: 10m0s
   retryInterval: 1m0s
@@ -45,25 +64,6 @@ spec:
 #        name: external-dns-base
 #      - kind: ConfigMap
 #        name: external-dns-neu
-#      - kind: ConfigMap
-#        name: config-cluster
-#---
-#apiVersion: kustomize.toolkit.fluxcd.io/v1
-#kind: Kustomization
-#metadata:
-#  name: namespaces
-#spec:
-#  interval: 10m0s
-#  retryInterval: 1m0s
-#  timeout: 5m
-#  path: ./infrastructure/configs/namespaces
-#  prune: true
-#  wait: true
-#  sourceRef:
-#    kind: Bucket
-#    name: cluster
-#  postBuild:
-#    substituteFrom:
 #      - kind: ConfigMap
 #        name: config-cluster
 #---

@@ -1,7 +1,7 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: external-dns-
+  name: external-dns
 spec:
   targetNamespace: ns-${ENV_LETTER}-all-addon-external-dns-01
   chartRef:
@@ -10,11 +10,18 @@ spec:
   interval: 10m
   timeout: 5m
   install:
+    createNamespace: false
     remediation:
-      retries: -1
+      retries: 3
+    crds: Skip
   upgrade:
     remediation:
-      retries: -1
+      retries: 3
+      remediateLastFailure: true
+    crds: Skip
+  # Uninstall cleanly without deleting CRDs
+  uninstall:
+    keepHistory: false
   values:
     image:
       repository: "${TENANT}spfmcontainerregistry.azurecr.io/images/external-dns"
@@ -25,33 +32,56 @@ spec:
         cpu: 50m
         memory: 150Mi
       limits:
-        cpu: 100m
-        memory: 150Mi
+        cpu: 200m
+        memory: 256Mi
     rbac:
       create: true
     serviceAccount:
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
     tolerations:
       - key: "CriticalAddonsOnly"
         operator: "Equal"
         value: "true"
         effect: "NoSchedule"
-    domainFilters: ["aks.${TENANT}${ENV_LETTER}.vczc.nl"]
+    # Restrict ExternalDNS to only manage specific domain(s)
+    domainFilters:
+      - "aks.${TENANT}${ENV_LETTER}.vczc.nl"
     logLevel: info
+    logFormat: json
+    # Only watch DNSEndpoint CRDs (not Services or Ingresses)
     sources:
-    - "crd"
+      - crd
     extraArgs:
-    - "--crd-source-apiversion=externaldns.k8s.io/v1alpha1"
-    - "--crd-source-kind=DNSEndpoint"
-    - "--managed-record-types=CNAME"
-    - "--managed-record-types=A"
-    - "--managed-record-types=TXT"
+      - "--crd-source-apiversion=externaldns.k8s.io/v1alpha1"
+      - "--crd-source-kind=DNSEndpoint"
+      - "--managed-record-types=CNAME"
+      - "--managed-record-types=A"
+      - "--managed-record-types=TXT"
+      # Sync interval
+      - "--interval=1m"
+      # Policy: sync creates new records, updates existing ones
+      - "--policy=sync"
     podLabels:
       azure.workload.identity/use: "true"
+      app.kubernetes.io/component: dns-controller
+    # Health checks
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: http
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 10
     provider: azure-private-dns
     secretConfiguration:
       enabled: true
       mountPath: "/etc/kubernetes/"
+  # Merge values from region-specific ConfigMap
   valuesFrom:
     - kind: ConfigMap
-      name: external-dns-values-
+      name: external-dns-values

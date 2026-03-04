@@ -10,4 +10,8 @@ spec:
     operation: copy
   url: oci://${TENANT}spfmcontainerregistry.azurecr.io/helm/charts/public/external-dns
   ref:
+    # Use semantic versioning for chart version
+    # Example: 1.14.x will match latest 1.14.z version
     semver: ${CHART_VERSION}
+  verify:
+    provider: cosign

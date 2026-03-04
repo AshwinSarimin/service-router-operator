@@ -1,11 +1,23 @@
+# Region-specific ExternalDNS configuration
+# These values override the base release.yaml settings
+
 fullnameOverride: "external-dns-${DNS_REGION}"
+
+# TXT record ownership - enables cross-cluster takeover within same region
 txtPrefix: "${DNS_REGION}-${ENV_LETTER}-${CLUSTER}-"
 txtOwnerId: "external-dns-${DNS_REGION}"
+
+# Label-based filtering - only process DNSEndpoints tagged for this region
+# This prevents DNS conflicts between regional ExternalDNS instances
 labelFilter: router.io/region in (${DNS_REGION})
+
+# Workload Identity configuration for Azure authentication
 serviceAccount:
   name: "external-dns-${DNS_REGION}"
   annotations:
     azure.workload.identity/client-id: ${MANAGED_IDENTITY_CLIENT_ID}
+
+# Azure Private DNS configuration
 secretConfiguration:
   data:
     azure.json: |

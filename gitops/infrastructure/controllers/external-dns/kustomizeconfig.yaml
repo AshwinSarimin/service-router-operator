@@ -1,8 +1,0 @@
-# Configure Kustomize to update ConfigMap references in HelmRelease
-# This ensures the valuesFrom field points to the generated ConfigMap name
-nameReference:
-  - kind: ConfigMap
-    version: v1
-    fieldSpecs:
-      - path: spec/valuesFrom/name
-        kind: HelmRelease

@@ -1,0 +1,73 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: external-dns-charts
+spec:
+  interval: 1h0m0s
+  url: https://kubernetes-sigs.github.io/external-dns
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-dns
+spec:
+  interval: 10m0s
+  timeout: 5m0s
+  releaseName: external-dns
+  chart:
+    spec:
+      version: "1.19.0"
+      chart: external-dns
+      sourceRef:
+        kind: HelmRepository
+        name: external-dns-charts
+  values:
+    image:
+      tag: v0.20.0
+    resources:
+      requests:
+        cpu: 50m
+        memory: 150Mi
+      limits:
+        cpu: 100m
+        memory: 150Mi
+    rbac:
+      create: true
+    serviceAccount:
+      name: "external-dns-weu"
+      annotations:
+        azure.workload.identity/client-id: ed1b7956-2782-44e6-b85f-3c2118ec47d9
+      #automountServiceAccountToken: false
+    tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+    domainFilters: ["test-aks.nl"]
+    logLevel: info
+    sources:
+    - "crd"
+    extraArgs:
+    - "--crd-source-apiversion=externaldns.k8s.io/v1alpha1"
+    - "--crd-source-kind=DNSEndpoint"
+    - "--managed-record-types=CNAME"
+    - "--managed-record-types=A"
+    - "--managed-record-types=TXT"
+    podLabels:
+      azure.workload.identity/use: "true"
+    provider: azure-private-dns
+    fullnameOverride: "external-dns-weu"
+    txtPrefix: "weu-dev-aks-"
+    txtOwnerId: "external-dns-weu"
+    labelFilter: router.io/region in (weu)
+    secretConfiguration:
+      enabled: true
+      mountPath: "/etc/kubernetes/"
+      data:
+        azure.json: |
+          {
+            "tenantId": "${TENANT_ID}",
+            "subscriptionId": "${GLOBAL_SUBSCRIPTION_ID}",
+            "resourceGroup": "${GLOBAL_PRIVATEDNS_RG}",
+            "useWorkloadIdentityExtension": true
+          }

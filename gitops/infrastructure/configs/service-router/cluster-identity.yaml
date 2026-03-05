@@ -1,0 +1,9 @@
+apiVersion: cluster.router.io/v1alpha1
+kind: ClusterIdentity
+metadata:
+  name: clusteridentity
+spec:
+  region: ${REGION}
+  cluster: ${CLUSTER}
+  domain: aks.${TENANT}${ENV_LETTER}.vczc.nl
+  environmentLetter: ${ENV_LETTER}

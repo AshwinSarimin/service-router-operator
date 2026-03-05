@@ -6,8 +6,8 @@ controller:
   defaultRouterGatewayNamespace: "aks-istio-ingress"
 
 image:
-  repository: "${TENANT}spfmcontainerregistry.azurecr.io/operators/servicerouter"
-  tag: "${IMAGE_TAG}"
+  repository: "serviceroutertestacr.azurecr.io/service-router-operator"
+  tag: "latest"
 
 # Production replica settings
 production:
@@ -23,12 +23,12 @@ production:
 
 # Monitoring
 metrics:
-  enabled: true
+  enabled: false
 
 # Prometheus ServiceMonitor
 serviceMonitor:
-  enabled: true
-  azureManaged: true
+  enabled: false
+  azureManaged: false
 
 tolerations:
   - key: "CriticalAddonsOnly"

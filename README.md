@@ -169,6 +169,26 @@ The following steps will be necessary to test the operator:
     - `az extension add -n k8s-extension`
 - `kubectl` and `helm` installed
 
+## Create Flux managed identity
+
+```bash
+# Create managed identity for Flux
+az identity create \
+  --resource-group $RESOURCE_GROUP \
+  --name "id-flux"
+
+FLUX_CLIENT_ID=$(az identity show \
+  --resource-group $RESOURCE_GROUP \
+  --name "id-flux" \
+  --query clientId -o tsv)
+
+FLUX_TENANT_ID=$(az identity show \
+  --resource-group $RESOURCE_GROUP \
+  --name "id-flux" \
+  --query tenantId -o tsv)
+```
+
+
 ## Create an AKS Cluster
 
 `--enable-asm` (Istio), `--enable-workload-identity`, and `--enable-oidc-issuer` can all be set at creation time. The Flux extension is a separate Azure resource provider and must be installed in a follow-up command.
@@ -203,7 +223,8 @@ az k8s-extension create \
   --cluster-name $CLUSTER_NAME \
   --cluster-type managedClusters \
   --name flux \
-  --extension-type microsoft.flux
+  --extension-type microsoft.flux \
+  --config workloadIdentity.enable=true workloadIdentity.azureClientId=$FLUX_CLIENT_ID workloadIdentity.azureTenantId=$FLUX_TENANT_ID
 ```
 
 Verify the Istio ingress gateway is running and has an IP address:
@@ -227,11 +248,50 @@ az acr create \
   --name $ACR_NAME \
   --sku Basic
 
+# Get the ACR ID
+ACR_ID=$(az acr show \
+  --resource-group $RESOURCE_GROUP \
+  --name $ACR_NAME \
+  --query id -o tsv)
+
 # Attach the ACR to the AKS cluster
 az aks update \
   --resource-group $RESOURCE_GROUP \
   --name $CLUSTER_NAME \
   --attach-acr $ACR_NAME
+```
+
+## Configure Flux identity
+```bash
+# Get the AKS OIDC issuer
+OIDC_ISSUER=$(az aks show \
+  --resource-group $RESOURCE_GROUP \
+  --name $CLUSTER_NAME \
+  --query oidcIssuerProfile.issuerUrl -o tsv)
+
+# Create federated credential for source-controller
+az identity federated-credential create \
+  --name id-flux-source \
+  --identity-name id-flux \
+  --resource-group $RESOURCE_GROUP \
+  --issuer $OIDC_ISSUER \
+  --subject "system:serviceaccount:flux-system:source-controller" \
+  --audience api://AzureADTokenExchange
+
+# Create federated credential for kustomize-controller
+az identity federated-credential create \
+  --name id-flux-kustomize \
+  --identity-name id-flux \
+  --resource-group $RESOURCE_GROUP \
+  --issuer $OIDC_ISSUER \
+  --subject "system:serviceaccount:flux-system:kustomize-controller" \
+  --audience api://AzureADTokenExchange
+
+# Grant ACR Pull permissions to Flux identity
+az role assignment create \
+  --assignee $FLUX_CLIENT_ID \
+  --role "AcrPull" \
+  --scope $ACR_ID
 ```
 
 ## Create an Azure Private DNS Zone
@@ -295,7 +355,7 @@ az identity federated-credential create \
   --identity-name id-external-dns-weu \
   --resource-group $RESOURCE_GROUP \
   --issuer $OIDC_ISSUER \
-  --subject "system:serviceaccount:external-dns:external-dns-weu"
+  --subject "system:serviceaccount:ns-external-dns:external-dns-weu"
 ```
 
 ## Build and push the operator helm chart

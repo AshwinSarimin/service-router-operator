@@ -362,19 +362,19 @@ az identity federated-credential create \
 
 ```bash
 # Set chart version (update as needed)
-CHART_VERSION="0.1.0"
+CHART_VERSION="0.2.0"
 
 # Authenticate Helm with ACR 
 helm registry login  serviceroutertestacr.azurecr.io --username serviceroutertestacr --password DJHrNKESmzb0inmCqxsJP7ak1LNZmqLVdF1BwQQx4W0Usi5Z5ZdEJQQJ99CCAC5RqLJEqg7NAAACAZCRO9f8
 
 # Package the Helm chart from the charts directory
-helm package charts/service-router-operator \
-  --version $CHART_VERSION \
-  --app-version $CHART_VERSION
+## helm package charts/service-router-operator \
+##  --version $CHART_VERSION \
+##  --app-version $CHART_VERSION
+make helm-package
 
 # Push the chart to ACR
-helm push service-router-operator-${CHART_VERSION}.tgz \
-  oci://${ACR_NAME}.azurecr.io/helm
+helm push dist/service-router-operator-${CHART_VERSION}.tgz oci://${ACR_NAME}.azurecr.io/helm
 
 # Verify the chart was pushed
 az acr repository show \

@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - service-router.yaml
 
-#namespace: ns-${ENV_LETTER}-all-addon-flux-cluster-config-01
+namespace: flux-system
 
 configMapGenerator:
   - name: service-router-values

@@ -69,8 +69,8 @@ spec:
       data:
         azure.json: |
           {
-            "tenantId": "${TENANT_ID}",
-            "subscriptionId": "${GLOBAL_SUBSCRIPTION_ID}",
-            "resourceGroup": "${GLOBAL_PRIVATEDNS_RG}",
+            "tenantId": "2a158a07-0057-4fd2-8303-84bf295283fe",
+            "subscriptionId": "f6b50b84-d224-4b8d-9dda-64eba46c602a",
+            "resourceGroup": "service-router-test-rg",
             "useWorkloadIdentityExtension": true
           }

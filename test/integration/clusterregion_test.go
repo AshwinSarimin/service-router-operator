@@ -26,9 +26,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
-	"github.com/vecozo/service-router-operator/internal/clusteridentity"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
+	"github.com/AshwinSarimin/service-router-operator/internal/clusteridentity"
 )
 
 var _ = Describe("ClusterIdentity Integration", func() {
@@ -45,7 +45,7 @@ var _ = Describe("ClusterIdentity Integration", func() {
 			},
 			Spec: clusterv1alpha1.ClusterIdentitySpec{
 				Region:            "neu",
-				Cluster:           "aks01",
+				Cluster:           "aks",
 				Domain:            "example.com",
 				EnvironmentLetter: "d",
 			},

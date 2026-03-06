@@ -26,8 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 )
 
@@ -49,7 +49,7 @@ var _ = Describe("DNSPolicy Mode Change Integration", func() {
 			},
 			Spec: clusterv1alpha1.ClusterIdentitySpec{
 				Region:            "neu",
-				Cluster:           "aks01",
+				Cluster:           "aks",
 				Domain:            "example.com",
 				EnvironmentLetter: "d",
 			},

@@ -24,10 +24,10 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
-	clustercontroller "github.com/vecozo/service-router-operator/internal/controller/cluster"
-	routingcontroller "github.com/vecozo/service-router-operator/internal/controller/routing"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
+	clustercontroller "github.com/AshwinSarimin/service-router-operator/internal/controller/cluster"
+	routingcontroller "github.com/AshwinSarimin/service-router-operator/internal/controller/routing"
 	istioclientv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"

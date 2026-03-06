@@ -10,7 +10,7 @@ multigroup: true
 plugins:
   grafana.kubebuilder.io/v1-alpha: {}
 projectName: service-router-operator
-repo: github.com/vecozo/service-router-operator
+repo: github.com/AshwinSarimin/service-router-operator
 resources:
 - api:
     crdVersion: v1
@@ -18,7 +18,7 @@ resources:
   domain: router.io
   group: cluster
   kind: ClusterRegion
-  path: github.com/vecozo/service-router-operator/api/v1alpha1
+  path: github.com/AshwinSarimin/service-router-operator/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -27,7 +27,7 @@ resources:
   domain: router.io
   group: dns
   kind: DNSPolicy
-  path: github.com/vecozo/service-router-operator/api/dns/v1alpha1
+  path: github.com/AshwinSarimin/service-router-operator/api/dns/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -36,7 +36,7 @@ resources:
   domain: router.io
   group: routing
   kind: ServiceRoute
-  path: github.com/vecozo/service-router-operator/api/routing/v1alpha1
+  path: github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -44,6 +44,6 @@ resources:
   domain: router.io
   group: gateway
   kind: Gateway
-  path: github.com/vecozo/service-router-operator/api/config/v1alpha1
+  path: github.com/AshwinSarimin/service-router-operator/api/config/v1alpha1
   version: v1alpha1
 version: "3"

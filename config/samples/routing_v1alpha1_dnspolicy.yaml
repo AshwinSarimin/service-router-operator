@@ -13,4 +13,4 @@ spec:
   mode: Active
   # For RegionBound mode, specify sourceRegion to ensure policy only activates in matching cluster
   # sourceRegion: weu
-  # sourceCluster: aks01  # Optional: further restrict to specific cluster
+  # sourceCluster: aks  # Optional: further restrict to specific cluster

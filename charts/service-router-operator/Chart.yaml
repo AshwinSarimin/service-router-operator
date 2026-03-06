@@ -12,6 +12,6 @@ keywords:
   - istio
 maintainers:
   - name: service-router-operator
-    url: https://github.com/vecozo/service-router-operator
+    url: https://github.com/AshwinSarimin/service-router-operator
 sources:
-  - https://github.com/vecozo/service-router-operator
+  - https://github.com/AshwinSarimin/service-router-operator

@@ -34,10 +34,10 @@ import (
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 	externaldnsendpoint "sigs.k8s.io/external-dns/endpoint"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
-	"github.com/vecozo/service-router-operator/internal/clusteridentity"
-	"github.com/vecozo/service-router-operator/internal/dnsconfiguration"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
+	"github.com/AshwinSarimin/service-router-operator/internal/clusteridentity"
+	"github.com/AshwinSarimin/service-router-operator/internal/dnsconfiguration"
 )
 
 // IngressDNSReconciler reconciles global DNS infrastructure for Gateways

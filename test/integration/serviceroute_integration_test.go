@@ -26,8 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 )
 
@@ -49,7 +49,7 @@ var _ = Describe("ServiceRoute Full Stack Integration", func() {
 			},
 			Spec: clusterv1alpha1.ClusterIdentitySpec{
 				Region:            "neu",
-				Cluster:           "aks01",
+				Cluster:           "aks",
 				Domain:            "example.com",
 				EnvironmentLetter: "d",
 			},
@@ -152,7 +152,7 @@ var _ = Describe("ServiceRoute Full Stack Integration", func() {
 
 			Expect(dnsEndpoint.Spec.Endpoints).To(HaveLen(1))
 			expectedSourceHost := "my-service-ns-d-dev-myapp.example.com"
-			expectedTargetHost := "aks01-neu-external.example.com"
+			expectedTargetHost := "aks-neu-external.example.com"
 
 			Expect(dnsEndpoint.Spec.Endpoints[0].DNSName).To(Equal(expectedSourceHost))
 			Expect(dnsEndpoint.Spec.Endpoints[0].RecordType).To(Equal("CNAME"))

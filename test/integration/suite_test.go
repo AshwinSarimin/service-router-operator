@@ -35,10 +35,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
-	clustercontroller "github.com/vecozo/service-router-operator/internal/controller/cluster"
-	routingcontroller "github.com/vecozo/service-router-operator/internal/controller/routing"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
+	clustercontroller "github.com/AshwinSarimin/service-router-operator/internal/controller/cluster"
+	routingcontroller "github.com/AshwinSarimin/service-router-operator/internal/controller/routing"
 	istioclientv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 )

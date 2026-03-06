@@ -28,8 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	"github.com/vecozo/service-router-operator/internal/dnsconfiguration"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	"github.com/AshwinSarimin/service-router-operator/internal/dnsconfiguration"
 )
 
 // DNSConfigurationReconciler reconciles a DNSConfiguration object

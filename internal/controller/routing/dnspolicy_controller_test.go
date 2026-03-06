@@ -27,8 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
 )
 
 var _ = Describe("DNSPolicy Controller", func() {
@@ -51,7 +51,7 @@ var _ = Describe("DNSPolicy Controller", func() {
 				},
 				Spec: clusterv1alpha1.ClusterIdentitySpec{
 					Region:            "neu",
-					Cluster:           "aks01",
+					Cluster:           "aks",
 					Domain:            "example.com",
 					EnvironmentLetter: "d",
 				},
@@ -392,7 +392,7 @@ var _ = Describe("DNSPolicy Controller", func() {
 				Spec: routingv1alpha1.DNSPolicySpec{
 					Mode:          "RegionBound",
 					SourceRegion:  "neu",   // Matches cluster region
-					SourceCluster: "aks02", // Doesn't match cluster name (aks01)
+					SourceCluster: "aks02", // Doesn't match cluster name (aks)
 				},
 			}
 

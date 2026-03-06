@@ -38,10 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
-	"github.com/vecozo/service-router-operator/internal/clusteridentity"
-	"github.com/vecozo/service-router-operator/pkg/consts"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
+	"github.com/AshwinSarimin/service-router-operator/internal/clusteridentity"
+	"github.com/AshwinSarimin/service-router-operator/pkg/consts"
 )
 
 // gatewayControllerConfig identifies a unique controller configuration

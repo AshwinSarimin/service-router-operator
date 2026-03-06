@@ -37,10 +37,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
 
-	clustercontroller "github.com/vecozo/service-router-operator/internal/controller/cluster"
+	clustercontroller "github.com/AshwinSarimin/service-router-operator/internal/controller/cluster"
 	//+kubebuilder:scaffold:imports
 )
 

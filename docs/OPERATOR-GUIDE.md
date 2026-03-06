@@ -305,7 +305,7 @@ If DNSEndpoints are deleted but records remain in Azure Private DNS:
 # Check for orphaned records
 az network private-dns record-set cname list \
   -g dns-rg \
-  -z aks.vecp.vczc.nl \
+  -z aks.test.nl \
   | jq '.[] | select(.fqdn | contains("myapp"))'
 ```
 
@@ -366,7 +366,7 @@ kubectl logs -n external-dns -l app=external-dns-weu
 # 3. Verify DNS record in Azure
 az network private-dns record-set cname show \
   -g dns-rg \
-  -z aks.vecp.vczc.nl \
+  -z aks.test.nl \
   -n api-ns-p-prod-myapp
 ```
 

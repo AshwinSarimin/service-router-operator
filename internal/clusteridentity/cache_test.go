@@ -26,7 +26,7 @@ func TestSetAndGet(t *testing.T) {
 
 	identity := &ClusterIdentity{
 		Region:            "neu",
-		Cluster:           "aks01",
+		Cluster:           "aks",
 		Domain:            "example.com",
 		EnvironmentLetter: "d",
 	}
@@ -66,7 +66,7 @@ func TestGetReturnsCopy(t *testing.T) {
 
 	identity := &ClusterIdentity{
 		Region:            "neu",
-		Cluster:           "aks01",
+		Cluster:           "aks",
 		Domain:            "example.com",
 		EnvironmentLetter: "d",
 	}
@@ -87,7 +87,7 @@ func TestGetReturnsCopy(t *testing.T) {
 func TestClear(t *testing.T) {
 	identity := &ClusterIdentity{
 		Region:            "neu",
-		Cluster:           "aks01",
+		Cluster:           "aks",
 		Domain:            "example.com",
 		EnvironmentLetter: "d",
 	}
@@ -106,7 +106,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	identity := &ClusterIdentity{
 		Region:            "neu",
-		Cluster:           "aks01",
+		Cluster:           "aks",
 		Domain:            "example.com",
 		EnvironmentLetter: "d",
 	}

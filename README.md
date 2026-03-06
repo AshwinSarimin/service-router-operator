@@ -103,12 +103,12 @@ ExternalDNS controller watches DNSEndpoints (filtered by label)
          │
          ▼
 ExternalDNS provisions CNAME record in Azure Private DNS:
-  api-ns-p-prod-myapp.example.com → aks01-weu-internal.example.com
+  api-ns-p-prod-myapp.example.com → aks-weu-internal.example.com
          │
          ▼
 A separate IngressDNS controller (part of the operator) watches
 the Gateway's LoadBalancer Service and creates an A record:
-  aks01-weu-internal.example.com → 10.123.45.67
+  aks-weu-internal.example.com → 10.123.45.67
 ```
 
 The two-step CNAME + A record design means that if the gateway IP ever changes (for example, after a cluster recreation), only the A record needs to update — all service CNAME records automatically follow without any changes.
@@ -413,7 +413,7 @@ az k8s-configuration flux create \
   --url https://github.com/AshwinSarimin/service-router-operator \
   --branch feature/documentation \
   --kustomization name=clusters path=./gitops/clusters/base prune=true \
-  --kustomization name=workloads path=./gitops/workloads prune=true depends_on=["clusters"]
+  --kustomization name=workloads path=./gitops/workloads prune=true
 ```
 
 
@@ -529,7 +529,7 @@ metadata:
   name: cluster-identity
 spec:
   region: weu
-  cluster: aks01
+  cluster: aks
   domain: example-test.private
   environmentLetter: p
 EOF

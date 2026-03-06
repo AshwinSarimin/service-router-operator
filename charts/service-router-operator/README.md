@@ -306,5 +306,5 @@ kubectl get lease -n service-router-system
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/vecozo/service-router-operator/issues
-- Documentation: https://github.com/vecozo/service-router-operator
+- GitHub Issues: https://github.com/AshwinSarimin/service-router-operator/issues
+- Documentation: https://github.com/AshwinSarimin/service-router-operator

@@ -30,7 +30,7 @@ type ClusterIdentitySpec struct {
 	// +kubebuilder:validation:MinLength=1
 	Region string `json:"region"`
 
-	// Cluster is the identifier for this cluster (e.g., "aks01")
+	// Cluster is the identifier for this cluster (e.g., "aks")
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	Cluster string `json:"cluster"`

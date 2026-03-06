@@ -1,4 +1,4 @@
-module github.com/vecozo/service-router-operator
+module github.com/AshwinSarimin/service-router-operator
 
 go 1.25.7
 

@@ -13,8 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
 )
 
 var _ = Describe("IngressDNS Controller", func() {
@@ -53,7 +53,7 @@ var _ = Describe("IngressDNS Controller", func() {
 			},
 			Spec: clusterv1alpha1.ClusterIdentitySpec{
 				Region:            "neu",
-				Cluster:           "aks01",
+				Cluster:           "aks",
 				Domain:            "example.com",
 				EnvironmentLetter: "d",
 			},
@@ -155,7 +155,7 @@ var _ = Describe("IngressDNS Controller", func() {
 				return ""
 			}, timeout, interval).Should(Equal("20.20.20.20"))
 
-			expectedHost := "aks01-neu-internal.example.com"
+			expectedHost := "aks-neu-internal.example.com"
 			Expect(createdDNSEndpoint.Spec.Endpoints[0].DNSName).To(Equal(expectedHost))
 
 			Expect(createdDNSEndpoint.OwnerReferences).To(HaveLen(1))

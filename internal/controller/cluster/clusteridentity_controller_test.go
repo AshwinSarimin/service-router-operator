@@ -27,8 +27,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	"github.com/vecozo/service-router-operator/internal/clusteridentity"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	"github.com/AshwinSarimin/service-router-operator/internal/clusteridentity"
 )
 
 var _ = Describe("ClusterIdentity Controller", func() {
@@ -47,7 +47,7 @@ var _ = Describe("ClusterIdentity Controller", func() {
 				},
 				Spec: clusterv1alpha1.ClusterIdentitySpec{
 					Region:            "neu",
-					Cluster:           "aks01",
+					Cluster:           "aks",
 					Domain:            "example.com",
 					EnvironmentLetter: "d",
 				},
@@ -63,7 +63,7 @@ var _ = Describe("ClusterIdentity Controller", func() {
 			identity := clusteridentity.Get()
 			Expect(identity).NotTo(BeNil())
 			Expect(identity.Region).To(Equal("neu"))
-			Expect(identity.Cluster).To(Equal("aks01"))
+			Expect(identity.Cluster).To(Equal("aks"))
 			Expect(identity.Domain).To(Equal("example.com"))
 			Expect(identity.EnvironmentLetter).To(Equal("d"))
 
@@ -99,7 +99,7 @@ var _ = Describe("ClusterIdentity Controller", func() {
 				},
 				Spec: clusterv1alpha1.ClusterIdentitySpec{
 					Region:            "neu",
-					Cluster:           "aks01",
+					Cluster:           "aks",
 					Domain:            "example.com",
 					EnvironmentLetter: "d",
 				},
@@ -166,7 +166,7 @@ var _ = Describe("ClusterIdentity Controller", func() {
 				},
 				Spec: clusterv1alpha1.ClusterIdentitySpec{
 					Region:            "neu",
-					Cluster:           "aks01",
+					Cluster:           "aks",
 					Domain:            "example.com",
 					EnvironmentLetter: "d",
 				},
@@ -219,7 +219,7 @@ var _ = Describe("ClusterIdentity Controller", func() {
 				},
 				Spec: clusterv1alpha1.ClusterIdentitySpec{
 					Region:            "neu",
-					Cluster:           "aks01",
+					Cluster:           "aks",
 					Domain:            "example.com",
 					EnvironmentLetter: "d",
 				},

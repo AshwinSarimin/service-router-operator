@@ -25,8 +25,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	"github.com/vecozo/service-router-operator/internal/dnsconfiguration"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	"github.com/AshwinSarimin/service-router-operator/internal/dnsconfiguration"
 )
 
 var _ = Describe("DNSConfiguration Controller", func() {

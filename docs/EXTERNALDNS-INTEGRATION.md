@@ -28,7 +28,7 @@ args:
 
   # Ownership: MUST follow pattern external-dns-{region}
   - --txt-owner-id=external-dns-weu
-  - --txt-prefix=weu-p-aks01-          # unique per cluster
+  - --txt-prefix=weu-p-aks-          # unique per cluster
 
   # Provider
   - --provider=azure-private-dns
@@ -77,7 +77,7 @@ spec:
     - dnsName: api-ns-p-prod-myapp.example.com
       recordType: CNAME
       targets:
-        - aks01-weu-internal.example.com
+        - aks-weu-internal.example.com
       recordTTL: 300
 ```
 
@@ -92,7 +92,7 @@ ExternalDNS uses TXT records to track ownership and prevent multiple instances f
 When ExternalDNS creates a DNS record, it also creates a TXT record:
 
 ```
-Name:  weu-p-aks01-api-ns-p-prod-myapp.example.com
+Name:  weu-p-aks-api-ns-p-prod-myapp.example.com
 Type:  TXT
 Value: "external-dns-weu"
 ```
@@ -113,11 +113,11 @@ Within the same region, two clusters can share the same `--txt-owner-id` value. 
 **Setup**: both WEU clusters use `--txt-owner-id=external-dns-weu` but different prefixes:
 
 ```
-aks01-weu: --txt-owner-id=external-dns-weu  --txt-prefix=weu-p-aks01-
+aks-weu: --txt-owner-id=external-dns-weu  --txt-prefix=weu-p-aks-
 aks02-weu: --txt-owner-id=external-dns-weu  --txt-prefix=weu-p-aks02-
 ```
 
-When aks01 fails and aks02's operator creates a new DNSEndpoint for the same hostname, aks02's ExternalDNS sees the TXT record owner matches and updates the DNS record. No manual intervention needed.
+When aks fails and aks02's operator creates a new DNSEndpoint for the same hostname, aks02's ExternalDNS sees the TXT record owner matches and updates the DNS record. No manual intervention needed.
 
 **Note**: Takeover only works within the same region. WEU and NEU clusters have different owner IDs and cannot take over each other's records. Cross-region DNS management uses RegionBound mode instead.
 
@@ -125,11 +125,11 @@ When aks01 fails and aks02's operator creates a new DNSEndpoint for the same hos
 
 ## Gateway A Records
 
-CNAME records created by ServiceRoutes point to a gateway hostname (e.g., `aks01-weu-internal.example.com`). The operator's **IngressDNS controller** creates A records for these gateway hostnames by watching the LoadBalancer Service associated with each Gateway CRD.
+CNAME records created by ServiceRoutes point to a gateway hostname (e.g., `aks-weu-internal.example.com`). The operator's **IngressDNS controller** creates A records for these gateway hostnames by watching the LoadBalancer Service associated with each Gateway CRD.
 
 ```
 Client query: api-ns-p-prod-myapp.example.com
-  → CNAME: aks01-weu-internal.example.com   (created by ServiceRoute controller)
+  → CNAME: aks-weu-internal.example.com   (created by ServiceRoute controller)
   → A:     10.123.45.67                     (created by IngressDNS controller)
   → Connects to Istio ingress gateway
 ```

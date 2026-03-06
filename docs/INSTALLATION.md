@@ -82,7 +82,7 @@ metadata:
   name: cluster-identity
 spec:
   region: weu
-  cluster: aks01
+  cluster: aks
   domain: example.com
   environmentLetter: p
 EOF

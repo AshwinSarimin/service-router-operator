@@ -31,10 +31,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	"github.com/vecozo/service-router-operator/internal/clusteridentity"
-	"github.com/vecozo/service-router-operator/internal/dnsconfiguration"
-	"github.com/vecozo/service-router-operator/pkg/consts"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	"github.com/AshwinSarimin/service-router-operator/internal/clusteridentity"
+	"github.com/AshwinSarimin/service-router-operator/internal/dnsconfiguration"
+	"github.com/AshwinSarimin/service-router-operator/pkg/consts"
 )
 
 // ClusterIdentityReconciler reconciles a ClusterIdentity object

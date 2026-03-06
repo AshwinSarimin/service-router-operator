@@ -48,7 +48,7 @@ spec:
                   type: string
                 type: array
               cluster:
-                description: Cluster is the identifier for this cluster (e.g., "aks01")
+                description: Cluster is the identifier for this cluster (e.g., "aks")
                 minLength: 1
                 type: string
               domain:

@@ -30,8 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	externaldnsv1alpha1 "sigs.k8s.io/external-dns/apis/v1alpha1"
 
-	clusterv1alpha1 "github.com/vecozo/service-router-operator/api/cluster/v1alpha1"
-	routingv1alpha1 "github.com/vecozo/service-router-operator/api/routing/v1alpha1"
+	clusterv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/cluster/v1alpha1"
+	routingv1alpha1 "github.com/AshwinSarimin/service-router-operator/api/routing/v1alpha1"
 )
 
 var _ = Describe("ServiceRoute Controller", func() {
@@ -71,7 +71,7 @@ var _ = Describe("ServiceRoute Controller", func() {
 			},
 			Spec: clusterv1alpha1.ClusterIdentitySpec{
 				Region:            "neu",
-				Cluster:           "aks01",
+				Cluster:           "aks",
 				Domain:            "example.com",
 				EnvironmentLetter: "d",
 			},
@@ -236,7 +236,7 @@ var _ = Describe("ServiceRoute Controller", func() {
 				for _, ep := range dnsEndpoints.Items[0].Spec.Endpoints {
 					if ep.RecordType == "CNAME" && len(ep.Targets) > 0 {
 						// Verify target host format: {cluster}-{region}-{targetPostfix}.{domain}
-						expectedTarget := "aks01-neu-external.example.com"
+						expectedTarget := "aks-neu-external.example.com"
 						if ep.Targets[0] == expectedTarget {
 							return true
 						}
@@ -279,7 +279,7 @@ var _ = Describe("ServiceRoute Controller", func() {
 					}
 				}
 				return ""
-			}, timeout, interval).Should(Equal("aks01-neu-external.example.com"))
+			}, timeout, interval).Should(Equal("aks-neu-external.example.com"))
 
 			Expect(k8sClient.Delete(ctx, serviceRoute)).Should(Succeed())
 		})
@@ -349,7 +349,7 @@ var _ = Describe("ServiceRoute Controller", func() {
 				for _, ep := range dnsEndpoints.Items[0].Spec.Endpoints {
 					if ep.RecordType == "CNAME" {
 						expectedSource := "api-service-ns-d-prod-backend.example.com"
-						expectedTarget := "aks01-neu-external.example.com"
+						expectedTarget := "aks-neu-external.example.com"
 						return ep.DNSName == expectedSource && len(ep.Targets) > 0 && ep.Targets[0] == expectedTarget
 					}
 				}

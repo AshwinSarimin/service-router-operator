@@ -106,11 +106,11 @@ kind: ClusterIdentity
 metadata:
   name: cluster-identity
 spec:
-  region: weu                    # Geographic region code
-  cluster: vec-weu-p-aks01       # Unique cluster identifier
-  domain: aks.vecp.vczc.nl       # Base DNS domain
-  environmentLetter: p           # Environment abbreviation (d/t/p)
-  adoptsRegions: []              # Optional: orphan regions without K8s clusters
+  region: weu                 # Geographic region code
+  cluster: aks-test           # Unique cluster identifier
+  domain: aks.test.nl         # Base DNS domain
+  environmentLetter: p        # Environment abbreviation (d/t/p)
+  adoptsRegions: []           # Optional: orphan regions without K8s clusters
 ```
 
 | Field | Description | Used For |
@@ -221,7 +221,7 @@ spec:
 status:
   phase: Active                              # Pending, Active, or Failed
   dnsNames:
-    - api-ns-p-prod-myapp.aks.vecp.vczc.nl
+    - api-ns-p-prod-myapp.aks.test.nl
 ```
 
 For each active ExternalDNS controller in `DNSPolicy.status.activeControllers`, the ServiceRoute Controller creates one DNSEndpoint CRD with a CNAME record pointing to the Gateway's target hostname.
@@ -247,9 +247,9 @@ All controllers use controller-runtime with leader election. Only one replica re
 {serviceName}-ns-{environmentLetter}-{environment}-{application}.{domain}
 ```
 
-**Example**: Service `api`, environment `prod`, application `myapp`, domain `aks.vecp.vczc.nl`, environmentLetter `p`:
+**Example**: Service `api`, environment `prod`, application `myapp`, domain `aks.test.nl`, environmentLetter `p`:
 ```
-api-ns-p-prod-myapp.aks.vecp.vczc.nl
+api-ns-p-prod-myapp.aks.test.nl
 ```
 
 This becomes the CNAME source, pointing to the gateway hostname.
@@ -260,9 +260,9 @@ This becomes the CNAME source, pointing to the gateway hostname.
 {cluster}-{region}-{targetPostfix}.{domain}
 ```
 
-**Example**: cluster `aks01`, region `weu`, targetPostfix `internal`, domain `aks.vecp.vczc.nl`:
+**Example**: cluster `aks`, region `weu`, targetPostfix `internal`, domain `aks.test.nl`:
 ```
-aks01-weu-internal.aks.vecp.vczc.nl
+aks-weu-internal.aks.test.nl
 ```
 
 This becomes the CNAME target and the A record name, resolving to the LoadBalancer IP.
@@ -270,9 +270,9 @@ This becomes the CNAME target and the A record name, resolving to the LoadBalanc
 ### Complete DNS Chain
 
 ```
-Client queries: api-ns-p-prod-myapp.aks.vecp.vczc.nl
+Client queries: api-ns-p-prod-myapp.aks.test.nl
     ↓  CNAME (ServiceRoute → DNSEndpoint)
-    aks01-weu-internal.aks.vecp.vczc.nl
+    aks-weu-internal.aks.test.nl
     ↓  A Record (IngressDNS Controller → DNSEndpoint)
     10.123.45.67  (LoadBalancer IP)
 ```
@@ -289,7 +289,7 @@ args:
   - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
   - --crd-source-kind=DNSEndpoint
   - --txt-owner-id=external-dns-weu                       # Must match region pattern
-  - --txt-prefix=weu-p-aks01-                             # Unique prefix per cluster
+  - --txt-prefix=weu-p-aks-                             # Unique prefix per cluster
   - --provider=azure-private-dns
   - --annotation-filter=external-dns.alpha.kubernetes.io/controller=external-dns-weu
 ```

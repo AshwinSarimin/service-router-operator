@@ -1,0 +1,6 @@
+apiVersion: routing.router.io/v1alpha1
+kind: DNSPolicy
+metadata:
+  name: dns-policy
+spec:
+  mode: Active

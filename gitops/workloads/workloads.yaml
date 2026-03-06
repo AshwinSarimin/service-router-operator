@@ -1,0 +1,257 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: namespaces
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  retryInterval: 1m0s
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: cluster-config
+  path: ./gitops/infrastructure/configs/namespaces
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: config-cluster
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: external-dns-weu
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: namespaces
+  #  - name: istio-ingress-config
+  interval: 10m0s
+  retryInterval: 1m0s
+  prune: true
+  wait: false
+  sourceRef:
+    kind: GitRepository
+    name: cluster-config
+  path: ./gitops/infrastructure/controllers/external-dns
+  #postBuild:
+  #  substituteFrom:
+  #    - kind: ConfigMap
+  #      name: external-dns-weu
+  #    - kind: ConfigMap
+  #      name: config-cluster
+#---
+#apiVersion: kustomize.toolkit.fluxcd.io/v1
+#kind: Kustomization
+#metadata:
+#  name: external-dns-neu
+#spec:
+#  dependsOn:
+#    - name: namespaces
+#    - name: istio-ingress-config
+#  interval: 10m0s
+#  retryInterval: 1m0s
+#  prune: true
+#  wait: false
+#  sourceRef:
+#    kind: Bucket
+#    name: cluster
+#  path: ./infrastructure/controllers/external-dns
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: external-dns-base
+#      - kind: ConfigMap
+#        name: external-dns-neu
+#      - kind: ConfigMap
+#        name: config-cluster
+#---
+#apiVersion: kustomize.toolkit.fluxcd.io/v1
+#kind: Kustomization
+#metadata:
+#  name: mesh-config
+#spec:
+#  interval: 1h
+#  retryInterval: 1m
+#  timeout: 5m
+#  path: ./infrastructure/configs/global/mesh-config
+#  prune: true
+#  wait: true
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: config-cluster
+#  sourceRef:
+#    kind: Bucket
+#    name: cluster
+#---
+#apiVersion: kustomize.toolkit.fluxcd.io/v1
+#kind: Kustomization
+#metadata:
+#  name: mesh-policies
+#spec:
+#  interval: 10m0s
+#  retryInterval: 1m0s
+#  timeout: 5m
+#  path: ./infrastructure/configs/global/mesh-policies
+#  prune: true
+#  wait: true
+#  sourceRef:
+#    kind: Bucket
+#    name: cluster
+#---
+#apiVersion: kustomize.toolkit.fluxcd.io/v1
+#kind: Kustomization
+#metadata:
+#  name: metrics-config
+#spec:
+#  interval: 10m0s
+#  retryInterval: 1m0s
+#  timeout: 5m
+#  path: ./infrastructure/configs/global/metrics
+#  prune: true
+#  wait: true
+#  sourceRef:
+#    kind: Bucket
+#    name: cluster
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: config-cluster
+#---
+#apiVersion: kustomize.toolkit.fluxcd.io/v1
+#kind: Kustomization
+#metadata:
+#  name: istio-ingress-gateway-services
+#spec:
+#  targetNamespace: aks-istio-ingress
+#  # once a week
+#  interval: 168h
+#  retryInterval: 1m0s
+#  timeout: 5m
+#  path: ./infrastructure/configs/istio-ingress/gateway-services
+#  prune: true
+#  wait: true
+#  sourceRef:
+#    kind: Bucket
+#    name: cluster
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: config-cluster
+#  healthCheckExprs:
+#    - apiVersion: routing.router.io/v1alpha1
+#      kind: Gateway
+#      current: status.phase == 'Pending' || status.phase == 'Active'
+#---
+#apiVersion: kustomize.toolkit.fluxcd.io/v1
+#kind: Kustomization
+#metadata:
+#  name: istio-ingress-certificates
+#spec:
+#  targetNamespace: aks-istio-ingress
+#  interval: 10m0s
+#  retryInterval: 1m0s
+#  timeout: 5m
+#  path: ./infrastructure/configs/istio-ingress/certificates
+#  prune: true
+#  wait: true
+#  sourceRef:
+#    kind: Bucket
+#    name: cluster
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: config-cluster
+#      - kind: ConfigMap
+#        name: istio-ingress
+#---
+#apiVersion: kustomize.toolkit.fluxcd.io/v1
+#kind: Kustomization
+#metadata:
+#  name: istio-ingress-secret-store-sync
+#spec:
+#  dependsOn:
+#    - name: istio-ingress-certificates
+#  interval: 10m0s
+#  retryInterval: 1m0s
+#  timeout: 5m
+#  path: ./infrastructure/controllers/secrets-store-sync/istio-ingress
+#  prune: true
+#  wait: true
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: secrets-store-sync
+#  sourceRef:
+#    kind: Bucket
+#    name: cluster
+#---
+#apiVersion: kustomize.toolkit.fluxcd.io/v1
+#kind: Kustomization
+#metadata:
+#  name: istio-ingress-config
+#spec:
+#  dependsOn:
+#    - name: istio-ingress-secret-store-sync
+#    - name: service-router
+#  interval: 10m0s
+#  retryInterval: 1m0s
+#  timeout: 5m
+#  path: ./infrastructure/configs/istio-ingress
+#  prune: true
+#  wait: true
+#  sourceRef:
+#    kind: Bucket
+#    name: cluster
+#  postBuild:
+#    substituteFrom:
+#      - kind: ConfigMap
+#        name: config-cluster
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: service-router
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: namespaces
+  interval: 10m0s
+  retryInterval: 1m0s
+  prune: true
+  wait: false
+  sourceRef:
+    kind: GitRepository
+    name: cluster-config
+  path: ./gitops/infrastructure/controllers/service-router
+  #postBuild:
+  #  substituteFrom:
+  #    - kind: ConfigMap
+  #      name: config-cluster
+  #    - kind: ConfigMap
+  #      name: service-router
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: service-router-config
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: namespaces
+    - name: service-router
+  interval: 10m0s
+  retryInterval: 1m0s
+  timeout: 5m
+  path: ./gitops/infrastructure/configs/service-router
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: cluster-config
+  #postBuild:
+  #  substituteFrom:
+  #    - kind: ConfigMap
+  #      name: config-cluster

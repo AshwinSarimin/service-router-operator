@@ -3,7 +3,7 @@ kind: ClusterIdentity
 metadata:
   name: clusteridentity
 spec:
-  region: ${REGION}
-  cluster: ${CLUSTER}
-  domain: aks.${TENANT}${ENV_LETTER}.vczc.nl
-  environmentLetter: ${ENV_LETTER}
+  region: weu
+  cluster: aks-test
+  domain: test-aks.nl
+  environmentLetter: p

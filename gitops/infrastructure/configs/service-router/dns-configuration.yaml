@@ -4,7 +4,5 @@ metadata:
   name: dnsconfiguration
 spec:
   externalDNSControllers:
-    - name: external-dns-neu
-      region: neu
     - name: external-dns-weu
       region: weu

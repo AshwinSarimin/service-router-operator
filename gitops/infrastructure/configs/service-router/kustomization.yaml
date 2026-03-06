@@ -3,5 +3,5 @@ kind: Kustomization
 resources:
   - cluster-identity.yaml
   - dns-configuration.yaml
-  
-namespace: ns-${ENV_LETTER}-all-addon-service-router-01
+
+namespace: ns-service-router

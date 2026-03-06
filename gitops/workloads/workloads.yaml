@@ -5,7 +5,7 @@ metadata:
   name: namespaces
   namespace: flux-system
 spec:
-  interval: 10m0s
+  interval: 3m0s
   retryInterval: 1m0s
   prune: true
   wait: true
@@ -27,7 +27,7 @@ spec:
   dependsOn:
     - name: namespaces
   #  - name: istio-ingress-config
-  interval: 10m0s
+  interval: 3m0s
   retryInterval: 1m0s
   prune: true
   wait: false
@@ -218,7 +218,7 @@ metadata:
 spec:
   dependsOn:
     - name: namespaces
-  interval: 10m0s
+  interval: 3m0s
   retryInterval: 1m0s
   prune: true
   wait: false
@@ -242,7 +242,7 @@ spec:
   dependsOn:
     - name: namespaces
     - name: service-router
-  interval: 10m0s
+  interval: 3m0s
   retryInterval: 1m0s
   timeout: 5m
   path: ./gitops/infrastructure/configs/service-router

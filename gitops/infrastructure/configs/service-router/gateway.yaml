@@ -4,5 +4,5 @@ metadata:
   name: app-gateway-ingress
 spec:
   controller: aks-istio-ingressgateway-internal
-  #credentialName: cert-aks-ingress
+  credentialName: cert-aks-ingress
   targetPostfix: internal

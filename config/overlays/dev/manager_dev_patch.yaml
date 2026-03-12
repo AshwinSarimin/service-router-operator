@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: system
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: manager
+        image: controller:dev
+        args:
+        - --leader-elect=false
+        - --zap-log-level=debug
+        - --zap-dev
+        resources:
+          limits:
+            cpu: 200m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi

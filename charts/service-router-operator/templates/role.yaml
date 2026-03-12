@@ -1,0 +1,128 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "service-router-operator.fullname" . }}-manager-role
+  labels:
+    {{- include "service-router-operator.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+- apiGroups:
+  - cluster.router.io
+  resources:
+  - clusteridentities
+  - dnsconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cluster.router.io
+  resources:
+  - clusteridentities/finalizers
+  - dnsconfigurations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cluster.router.io
+  resources:
+  - clusteridentities/status
+  - dnsconfigurations/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - externaldns.k8s.io
+  resources:
+  - dnsendpoints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.istio.io
+  resources:
+  - gateways
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - routing.router.io
+  resources:
+  - dnspolicies
+  - gateways
+  - serviceroutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - routing.router.io
+  resources:
+  - dnspolicies/finalizers
+  - gateways/finalizers
+  - serviceroutes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - routing.router.io
+  resources:
+  - dnspolicies/status
+  - gateways/status
+  - serviceroutes/status
+  verbs:
+  - get
+  - patch
+  - update
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "service-router-operator.fullname" . }}-manager-rolebinding
+  labels:
+    {{- include "service-router-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "service-router-operator.fullname" . }}-manager-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "service-router-operator.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}

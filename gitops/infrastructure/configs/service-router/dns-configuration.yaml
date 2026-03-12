@@ -1,0 +1,8 @@
+apiVersion: cluster.router.io/v1alpha1
+kind: DNSConfiguration
+metadata:
+  name: dnsconfiguration
+spec:
+  externalDNSControllers:
+    - name: external-dns-weu
+      region: weu

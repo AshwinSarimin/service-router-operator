@@ -1,0 +1,9 @@
+apiVersion: cluster.router.io/v1alpha1
+kind: ClusterIdentity
+metadata:
+  name: clusteridentity
+spec:
+  region: weu
+  cluster: aks-test
+  domain: test-aks.nl
+  environmentLetter: p

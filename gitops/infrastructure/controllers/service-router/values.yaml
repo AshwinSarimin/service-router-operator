@@ -1,0 +1,37 @@
+fullnameOverride: "service-router"
+
+# Controller configuration
+controller:
+  logLevel: info
+  defaultRouterGatewayNamespace: "aks-istio-ingress"
+
+image:
+  repository: "serviceroutertestacr.azurecr.io/service-router-operator"
+  tag: "latest"
+
+# Production replica settings
+production:
+  enabled: true
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Monitoring
+metrics:
+  enabled: false
+
+# Prometheus ServiceMonitor
+serviceMonitor:
+  enabled: false
+  azureManaged: false
+
+tolerations:
+  - key: "CriticalAddonsOnly"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"

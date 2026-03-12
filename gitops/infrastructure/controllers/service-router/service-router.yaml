@@ -1,0 +1,36 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: service-router-operator-chart
+  namespace: flux-system
+spec:
+  interval: 10m
+  provider: azure
+  layerSelector:
+    mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+    operation: copy
+  url: oci://serviceroutertestacr.azurecr.io/helm/service-router-operator
+  ref:
+    semver: 0.2.0
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: service-router
+  namespace: flux-system
+spec:
+  targetNamespace: ns-service-router
+  chartRef:
+    kind: OCIRepository
+    name: service-router-operator-chart
+  interval: 10m
+  timeout: 30m
+  install:
+    remediation:
+      retries: 5
+  upgrade:
+    remediation:
+      retries: 5
+  valuesFrom:
+    - kind: ConfigMap
+      name: service-router-values

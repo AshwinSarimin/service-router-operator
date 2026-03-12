@@ -1,0 +1,76 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: external-dns-charts
+  namespace: flux-system
+spec:
+  interval: 1h0m0s
+  url: https://kubernetes-sigs.github.io/external-dns
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-dns
+  namespace: flux-system
+spec:
+  interval: 3m0s
+  timeout: 3m0s
+  releaseName: external-dns
+  targetNamespace: ns-external-dns
+  chart:
+    spec:
+      version: "1.19.0"
+      chart: external-dns
+      sourceRef:
+        kind: HelmRepository
+        name: external-dns-charts
+  values:
+    image:
+      tag: v0.20.0
+    resources:
+      requests:
+        cpu: 50m
+        memory: 150Mi
+      limits:
+        cpu: 100m
+        memory: 150Mi
+    rbac:
+      create: true
+    serviceAccount:
+      name: "external-dns-weu"
+      annotations:
+        azure.workload.identity/client-id: ed1b7956-2782-44e6-b85f-3c2118ec47d9
+      #automountServiceAccountToken: false
+    tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+    domainFilters: ["test-aks.nl"]
+    logLevel: info
+    sources:
+    - "crd"
+    extraArgs:
+    - "--crd-source-apiversion=externaldns.k8s.io/v1alpha1"
+    - "--crd-source-kind=DNSEndpoint"
+    - "--managed-record-types=CNAME"
+    - "--managed-record-types=A"
+    - "--managed-record-types=TXT"
+    podLabels:
+      azure.workload.identity/use: "true"
+    provider: azure-private-dns
+    fullnameOverride: "external-dns-weu"
+    txtPrefix: "weu-dev-aks-"
+    txtOwnerId: "external-dns-weu"
+    labelFilter: router.io/region in (weu)
+    secretConfiguration:
+      enabled: true
+      mountPath: "/etc/kubernetes/"
+      data:
+        azure.json: |
+          {
+            "tenantId": "2a158a07-0057-4fd2-8303-84bf295283fe",
+            "subscriptionId": "f6b50b84-d224-4b8d-9dda-64eba46c602a",
+            "resourceGroup": "service-router-test-rg",
+            "useWorkloadIdentityExtension": true
+          }

@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "service-router-operator.fullname" . }}-controller-manager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "service-router-operator.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.production.enabled }}
+  replicas: {{ .Values.production.replicaCount }}
+  {{- else }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "service-router-operator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "service-router-operator.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "service-router-operator.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and .Values.production.enabled .Values.production.podAntiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "service-router-operator.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+      {{- else }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: manager
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - /manager
+        args:
+        - --leader-elect={{ .Values.controller.leaderElection }}
+        - --zap-log-level={{ .Values.controller.logLevel }}
+        {{- if .Values.controller.development }}
+        - --zap-devel
+        {{- end }}
+        - --health-probe-bind-address=:{{ .Values.healthProbe.port }}
+        - --metrics-bind-address={{- if .Values.metrics.kubeRbacProxy.enabled }}127.0.0.1:{{ .Values.metrics.port }}{{- else }}:{{ .Values.metrics.port }}{{- end }}
+        - --default-router-gateway-namespace={{ .Values.controller.defaultRouterGatewayNamespace }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 10 }}
+        ports:
+        - containerPort: {{ .Values.metrics.port }}
+          name: metrics
+        {{- if .Values.production.enabled }}
+        resources:
+          {{- toYaml .Values.production.resources | nindent 10 }}
+        {{- else }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- end }}
+      {{- if .Values.metrics.kubeRbacProxy.enabled }}
+      - name: kube-rbac-proxy
+        image: "{{ .Values.metrics.kubeRbacProxy.image.repository }}:{{ .Values.metrics.kubeRbacProxy.image.tag }}"
+        imagePullPolicy: {{ .Values.metrics.kubeRbacProxy.image.pullPolicy }}
+        args:
+          {{- range .Values.metrics.kubeRbacProxy.args }}
+          - {{ . | quote }}
+          {{- end }}
+        ports:
+        - containerPort: {{ .Values.metrics.kubeRbacProxy.port }}
+          protocol: TCP
+          name: https
+        resources:
+          {{- toYaml .Values.metrics.kubeRbacProxy.resources | nindent 10 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 10

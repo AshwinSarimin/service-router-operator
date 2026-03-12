@@ -1,0 +1,50 @@
+apiVersion: routing.router.io/v1alpha1
+kind: ServiceRoute
+metadata:
+  labels:
+    app.kubernetes.io/name: serviceroute
+    app.kubernetes.io/instance: serviceroute-sample
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: service-router-operator
+  name: serviceroute-sample1
+  namespace: ns-d-dev-test-01
+spec:
+  serviceName: my-service
+  gatewayName: gateway-sample
+  environment: dev
+  application: myapp
+---
+apiVersion: routing.router.io/v1alpha1
+kind: ServiceRoute
+metadata:
+  labels:
+    app.kubernetes.io/name: serviceroute
+    app.kubernetes.io/instance: serviceroute-sample
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: service-router-operator
+  name: serviceroute-sample2
+  namespace: ns-d-dev-test-01
+spec:
+  serviceName: my-service2
+  gatewayName: gateway-sample
+  environment: dev
+  application: myapp
+---
+apiVersion: routing.router.io/v1alpha1
+kind: ServiceRoute
+metadata:
+  labels:
+    app.kubernetes.io/name: serviceroute
+    app.kubernetes.io/instance: serviceroute-sample
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: service-router-operator
+  name: serviceroute-sample3
+  namespace: ns-d-dev-test-01
+spec:
+  serviceName: my-service3
+  gatewayName: gateway-sample
+  environment: dev
+  application: myapp

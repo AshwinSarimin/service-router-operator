@@ -1,0 +1,27 @@
+# permissions for end users to view serviceroutes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: serviceroute-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: service-router-operator
+    app.kubernetes.io/part-of: service-router-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: serviceroute-viewer-role
+rules:
+- apiGroups:
+  - routing.router.io
+  resources:
+  - serviceroutes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - routing.router.io
+  resources:
+  - serviceroutes/status
+  verbs:
+  - get

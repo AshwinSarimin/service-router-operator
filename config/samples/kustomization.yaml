@@ -1,0 +1,8 @@
+## Append samples of your project ##
+resources:
+- cluster_v1alpha1_clusteridentity.yaml
+- cluster_v1alpha1_dnsconfiguration.yaml
+- routing_v1alpha1_gateway.yaml
+- routing_v1alpha1_dnspolicy.yaml
+- routing_v1alpha1_serviceroute.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
